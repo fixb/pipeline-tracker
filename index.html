@@ -1,0 +1,2177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #06090f;
+  --bg-secondary: #0c1220;
+  --bg-card: #111a2e;
+  --bg-card-hover: #162038;
+  --bg-input: #0a101e;
+  --border: #1a2744;
+  --border-light: #243352;
+  --text-primary: #e4eaf4;
+  --text-secondary: #8a9bba;
+  --text-muted: #4e6080;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-glow: rgba(59, 130, 246, 0.12);
+  --accent-dim: rgba(59, 130, 246, 0.06);
+  --green: #10b981;
+  --green-bright: #34d399;
+  --green-bg: rgba(16, 185, 129, 0.08);
+  --amber: #f59e0b;
+  --amber-bg: rgba(245, 158, 11, 0.08);
+  --red: #ef4444;
+  --red-bg: rgba(239, 68, 68, 0.06);
+  --purple: #8b5cf6;
+  --purple-bg: rgba(139, 92, 246, 0.08);
+  --cyan: #06b6d4;
+  --cyan-bg: rgba(6, 182, 212, 0.06);
+  --gold: #fbbf24;
+  --gold-bg: rgba(251, 191, 36, 0.08);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* ─── HEADER ─── */
+.app-header {
+  padding: 18px 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: rgba(12, 18, 32, 0.85);
+  backdrop-filter: blur(16px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo-mark {
+  width: 34px; height: 34px;
+  background: linear-gradient(135deg, var(--accent), #1d4ed8);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700; font-size: 13px; color: white;
+}
+.logo-text { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
+.logo-text span { color: var(--text-muted); font-weight: 400; margin-left: 8px; font-size: 13px; }
+
+.header-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ─── TABS ─── */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 0 36px;
+}
+.tab {
+  padding: 12px 22px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  user-select: none;
+}
+.tab:hover { color: var(--text-secondary); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ─── BUTTONS ─── */
+.btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px; font-weight: 500;
+  padding: 7px 14px; border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer; transition: all 0.15s;
+  display: flex; align-items: center; gap: 5px;
+}
+.btn:hover { background: var(--bg-card-hover); color: var(--text-primary); border-color: var(--border-light); }
+.btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+
+/* ─── LAYOUT ─── */
+.main-content { padding: 24px 36px; max-width: 1500px; margin: 0 auto; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ─── KPIs ─── */
+.kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 24px; }
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+}
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+}
+.kpi-card.blue::before { background: var(--accent); }
+.kpi-card.green::before { background: var(--green); }
+.kpi-card.amber::before { background: var(--amber); }
+.kpi-card.purple::before { background: var(--purple); }
+.kpi-card.cyan::before { background: var(--cyan); }
+.kpi-label {
+  font-size: 10px; font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.kpi-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 26px; font-weight: 600; letter-spacing: -1px;
+}
+.kpi-card.blue .kpi-value { color: var(--accent); }
+.kpi-card.green .kpi-value { color: var(--green); }
+.kpi-card.amber .kpi-value { color: var(--amber); }
+.kpi-card.purple .kpi-value { color: var(--purple); }
+.kpi-card.cyan .kpi-value { color: var(--cyan); }
+.kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+
+/* ─── PANELS ─── */
+.panels { display: grid; grid-template-columns: 1fr 320px; gap: 18px; }
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.panel-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.panel-title { font-size: 13px; font-weight: 600; }
+.panel-subtitle { font-size: 11px; color: var(--text-muted); }
+
+/* ─── TOOLBAR ─── */
+.toolbar {
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+}
+.search-box { flex: 1; min-width: 160px; position: relative; }
+.search-box input {
+  width: 100%; padding: 6px 10px 6px 28px;
+  border-radius: 6px; border: 1px solid var(--border);
+  background: var(--bg-input); color: var(--text-primary);
+  font-family: 'DM Sans', sans-serif; font-size: 12px; outline: none;
+}
+.search-box input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+.search-box::before { content: '⌕'; position: absolute; left: 9px; top: 50%; transform: translateY(-50%); font-size: 13px; color: var(--text-muted); }
+.filter-select {
+  padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--bg-input); color: var(--text-secondary);
+  font-family: 'DM Sans', sans-serif; font-size: 12px; cursor: pointer; outline: none;
+}
+
+/* ─── TABLE ─── */
+.table-wrapper { max-height: calc(100vh - 380px); overflow-y: auto; }
+.table-wrapper::-webkit-scrollbar { width: 5px; }
+.table-wrapper::-webkit-scrollbar-track { background: transparent; }
+.table-wrapper::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.pipeline-table { width: 100%; border-collapse: collapse; }
+.pipeline-table thead th {
+  padding: 9px 14px; text-align: left;
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.8px;
+  color: var(--text-muted); border-bottom: 1px solid var(--border);
+  cursor: pointer; user-select: none; white-space: nowrap;
+  position: sticky; top: 0; background: var(--bg-card); z-index: 2;
+}
+.pipeline-table thead th:hover { color: var(--text-secondary); }
+.pipeline-table tbody tr {
+  border-bottom: 1px solid rgba(26, 39, 68, 0.4);
+  transition: background 0.12s;
+  animation: fadeIn 0.25s ease forwards;
+}
+.pipeline-table tbody tr:hover { background: var(--accent-dim); }
+.pipeline-table tbody td { padding: 8px 14px; font-size: 12px; vertical-align: middle; }
+
+.prospect-name { font-weight: 600; letter-spacing: -0.2px; }
+.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+.status-select {
+  padding: 3px 6px; border-radius: 5px; border: 1px solid var(--border);
+  background: var(--bg-input); color: var(--text-primary);
+  font-family: 'DM Sans', sans-serif; font-size: 11px; cursor: pointer;
+  outline: none; min-width: 155px;
+}
+.geo-tag { font-size: 10px; color: var(--text-muted); background: rgba(255,255,255,0.03); padding: 2px 7px; border-radius: 3px; }
+
+.ev-bar-container { display: flex; align-items: center; gap: 6px; }
+.ev-bar { flex: 1; height: 5px; background: rgba(255,255,255,0.03); border-radius: 3px; overflow: hidden; min-width: 50px; }
+.ev-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+.ev-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; min-width: 44px; text-align: right; }
+
+.edit-estimate {
+  background: transparent; border: 1px solid transparent;
+  color: var(--text-primary); font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; padding: 2px 5px; border-radius: 4px;
+  width: 65px; text-align: right; cursor: pointer; outline: none;
+}
+.edit-estimate:hover { border-color: var(--border); background: var(--bg-input); }
+.edit-estimate:focus { border-color: var(--accent); background: var(--bg-input); box-shadow: 0 0 0 2px var(--accent-glow); }
+
+.proba-cell { display: inline-flex; align-items: center; gap: 4px; }
+.proba-cell-input {
+  background: transparent; border: 1px solid transparent;
+  color: var(--text-secondary); font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; padding: 2px 4px; border-radius: 4px;
+  width: 42px; text-align: right; cursor: pointer; outline: none;
+}
+.proba-cell-input:hover { border-color: var(--border); background: var(--bg-input); }
+.proba-cell-input:focus { border-color: var(--accent); background: var(--bg-input); box-shadow: 0 0 0 2px var(--accent-glow); }
+.proba-cell-input.override { color: var(--cyan); font-weight: 600; }
+.proba-cell-dot {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--cyan);
+  box-shadow: 0 0 5px var(--cyan-bg);
+}
+.proba-cell-reset {
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 10px; padding: 1px 3px; border-radius: 3px;
+  opacity: 0.6;
+}
+.proba-cell-reset:hover { opacity: 1; color: var(--accent); background: var(--accent-dim); }
+
+.delete-btn {
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 12px; padding: 3px; border-radius: 3px;
+  opacity: 0; transition: all 0.12s;
+}
+.pipeline-table tbody tr:hover .delete-btn { opacity: 0.5; }
+.delete-btn:hover { opacity: 1 !important; color: var(--red); background: var(--red-bg); }
+
+.totals-row { background: var(--accent-dim) !important; }
+.totals-row td { border-top: 2px solid var(--accent) !important; padding: 10px 14px !important; }
+
+/* ─── SIDEBAR ─── */
+.sidebar-section { padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.sidebar-section:last-child { border-bottom: none; }
+.sidebar-section h3 {
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-muted); margin-bottom: 10px;
+}
+.proba-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 11px; }
+.proba-label { color: var(--text-secondary); flex: 1; }
+.proba-value { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 12px; width: 38px; text-align: right; }
+.proba-bar { width: 44px; height: 3px; background: rgba(255,255,255,0.04); border-radius: 2px; margin-left: 8px; overflow: hidden; }
+.proba-bar-fill { height: 100%; border-radius: 2px; background: var(--accent); }
+
+.proba-input {
+  width: 40px; text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 600;
+  background: transparent; border: 1px solid transparent;
+  color: var(--text-primary); padding: 1px 4px;
+  border-radius: 4px; outline: none;
+  -moz-appearance: textfield;
+}
+.proba-input::-webkit-outer-spin-button,
+.proba-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.proba-input:hover { border-color: var(--border); background: var(--bg-input); }
+.proba-input:focus { border-color: var(--accent); background: var(--bg-input); box-shadow: 0 0 0 2px var(--accent-glow); }
+
+/* Proba Monitor */
+.monitor-container { padding: 24px; }
+.monitor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 24px; }
+.monitor-card {
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: 10px; padding: 20px;
+}
+.monitor-card h4 {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 12px;
+}
+.proba-compare-row {
+  display: flex; align-items: center; gap: 8px; padding: 5px 0;
+  font-size: 12px; border-bottom: 1px solid rgba(26,39,68,0.3);
+}
+.proba-compare-row:last-child { border-bottom: none; }
+.proba-compare-label { flex: 1; color: var(--text-secondary); }
+.proba-compare-default {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text-muted); width: 36px; text-align: right;
+}
+.proba-compare-current {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  font-weight: 600; width: 36px; text-align: right;
+}
+.proba-compare-delta {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  font-weight: 600; width: 44px; text-align: right;
+}
+.delta-up { color: var(--green); }
+.delta-down { color: var(--red); }
+.delta-flat { color: var(--text-muted); }
+
+.snapshot-row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 0;
+  border-bottom: 1px solid rgba(26,39,68,0.3); font-size: 12px;
+}
+.snapshot-row:last-child { border-bottom: none; }
+.snapshot-time { width: 100px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); flex-shrink: 0; }
+.snapshot-reason { flex: 1; color: var(--text-secondary); }
+.snapshot-ev { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: var(--green); width: 70px; text-align: right; }
+.snapshot-conv { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--amber); width: 50px; text-align: right; }
+
+.ev-chart { width: 100%; height: 140px; position: relative; margin-top: 8px; }
+.ev-chart-bar-group {
+  position: absolute; bottom: 20px; display: flex; flex-direction: column; align-items: center;
+}
+.ev-chart-bar {
+  width: 28px; border-radius: 3px 3px 0 0;
+  transition: height 0.4s ease; min-height: 2px;
+}
+.ev-chart-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 9px;
+  color: var(--text-muted); margin-top: 4px; white-space: nowrap;
+}
+.ev-chart-value {
+  font-family: 'JetBrains Mono', monospace; font-size: 9px;
+  font-weight: 600; margin-bottom: 3px;
+}
+.ev-chart-baseline {
+  position: absolute; bottom: 19px; left: 0; right: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.stage-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(26,39,68,0.3); }
+.stage-row:last-child { border-bottom: none; }
+.stage-name { font-size: 11px; font-weight: 500; color: var(--text-secondary); }
+.stage-count { font-size: 10px; color: var(--text-muted); }
+.stage-pipeline { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; }
+.stage-ev { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--green); }
+.geo-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+.geo-name { font-size: 12px; color: var(--text-secondary); }
+.geo-value { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+/* ─── MODAL ─── */
+.modal-overlay {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  z-index: 200; align-items: center; justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: 14px; padding: 24px; width: 400px; max-width: 90vw;
+}
+.modal h2 { font-size: 16px; font-weight: 600; margin-bottom: 18px; }
+.form-group { margin-bottom: 12px; }
+.form-group label {
+  display: block; font-size: 11px; font-weight: 500;
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.6px; margin-bottom: 5px;
+}
+.form-group input, .form-group select {
+  width: 100%; padding: 8px 10px; border-radius: 7px;
+  border: 1px solid var(--border); background: var(--bg-input);
+  color: var(--text-primary); font-family: 'DM Sans', sans-serif;
+  font-size: 13px; outline: none;
+}
+.form-group input:focus, .form-group select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+
+/* Stage editor */
+.stage-edit-row {
+  display: grid;
+  grid-template-columns: 28px 60px 1fr 60px 70px 36px 28px 28px;
+  gap: 6px; align-items: center;
+  padding: 6px 0; border-bottom: 1px solid rgba(26,39,68,0.3);
+}
+.stage-edit-row input[type="text"], .stage-edit-row input[type="number"] {
+  padding: 4px 6px; border-radius: 5px; border: 1px solid var(--border);
+  background: var(--bg-input); color: var(--text-primary);
+  font-family: 'DM Sans', sans-serif; font-size: 12px; outline: none; width: 100%;
+}
+.stage-edit-row input[type="color"] {
+  width: 36px; height: 28px; padding: 0; border: 1px solid var(--border);
+  border-radius: 5px; background: var(--bg-input); cursor: pointer;
+}
+.stage-edit-row .move-btn, .stage-edit-row .del-btn {
+  background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text-secondary); cursor: pointer; padding: 2px 0;
+  border-radius: 5px; font-size: 11px; height: 28px; width: 100%;
+}
+.stage-edit-row .move-btn:hover { color: var(--accent); border-color: var(--accent); }
+.stage-edit-row .del-btn:hover { color: var(--red); border-color: var(--red); background: var(--red-bg); }
+.stage-edit-row.new-row { background: var(--accent-dim); border-radius: 5px; padding-left: 4px; padding-right: 4px; }
+.stage-edit-row .row-handle {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--text-muted); text-align: center;
+}
+.stage-edit-header {
+  display: grid;
+  grid-template-columns: 28px 60px 1fr 60px 70px 36px 28px 28px;
+  gap: 6px; padding-bottom: 6px;
+  font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px;
+  border-bottom: 1px solid var(--border);
+}
+.stage-edit-header > span:nth-child(3) { padding-left: 4px; }
+
+/* ─── FUNNEL ─── */
+.funnel-container { padding: 28px 24px; }
+.funnel-stage {
+  display: flex; align-items: center; gap: 16px; margin-bottom: 6px;
+  position: relative;
+}
+.funnel-label {
+  width: 160px; text-align: right; font-size: 12px; font-weight: 500;
+  color: var(--text-secondary); flex-shrink: 0;
+}
+.funnel-bar-wrap { flex: 1; display: flex; align-items: center; justify-content: center; }
+.funnel-bar {
+  height: 44px; border-radius: 6px; transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  display: flex; align-items: center; justify-content: center;
+  position: relative; cursor: default;
+  min-width: 60px;
+}
+.funnel-bar-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; font-weight: 600; color: white;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  white-space: nowrap;
+}
+.funnel-bar-sub {
+  position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
+  font-size: 10px; color: var(--text-muted); white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+}
+.funnel-meta {
+  width: 120px; font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; color: var(--text-secondary); flex-shrink: 0;
+}
+.funnel-bar { cursor: pointer; }
+.funnel-bar:hover { filter: brightness(1.15); }
+.funnel-expand {
+  margin: 4px 0 12px 176px;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  animation: fadeIn 0.2s ease;
+}
+.funnel-expand-row {
+  display: grid;
+  grid-template-columns: 1fr 70px 90px 70px;
+  gap: 10px;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(26,39,68,0.3);
+}
+.funnel-expand-row:last-child { border-bottom: none; }
+.funnel-expand-row .fe-name { font-weight: 600; color: var(--text-primary); }
+.funnel-expand-row .fe-pipe { font-family: 'JetBrains Mono', monospace; text-align: right; color: var(--text-secondary); }
+.funnel-expand-row .fe-geo { text-align: right; }
+.funnel-expand-row .fe-ev { font-family: 'JetBrains Mono', monospace; text-align: right; color: var(--green); font-weight: 600; }
+.funnel-expand-empty { font-size: 11px; color: var(--text-muted); padding: 6px 0; }
+.funnel-connector {
+  display: flex; align-items: center; justify-content: center;
+  padding: 2px 0;
+}
+.funnel-connector-arrow {
+  color: var(--text-muted); font-size: 10px; opacity: 0.4;
+}
+
+/* ─── CLOSINGS VISUALIZATION ─── */
+.closings-container { padding: 28px 24px; }
+.closings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 24px; }
+
+.closing-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px;
+  position: relative;
+  overflow: hidden;
+}
+.closing-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+}
+.closing-card.optimistic::before { background: linear-gradient(90deg, var(--green), var(--green-bright)); }
+.closing-card.base::before { background: linear-gradient(90deg, var(--accent), #60a5fa); }
+.closing-card.conservative::before { background: linear-gradient(90deg, var(--amber), #fcd34d); }
+.closing-card.pessimistic::before { background: linear-gradient(90deg, var(--red), #f87171); }
+
+.closing-scenario {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 4px;
+}
+.closing-card.optimistic .closing-scenario { color: var(--green); }
+.closing-card.base .closing-scenario { color: var(--accent); }
+.closing-card.conservative .closing-scenario { color: var(--amber); }
+.closing-card.pessimistic .closing-scenario { color: var(--red); }
+
+.closing-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 32px; font-weight: 700; letter-spacing: -1.5px;
+  margin-bottom: 2px;
+}
+.closing-desc { font-size: 11px; color: var(--text-muted); }
+
+/* Closing prospect cards */
+.closing-deals-section { margin-top: 24px; }
+.closing-section-title {
+  font-size: 13px; font-weight: 600; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.closing-section-title .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+}
+
+.deal-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+}
+.deal-card:hover { border-color: var(--border-light); background: var(--bg-card-hover); }
+
+.deal-proba-ring {
+  width: 44px; height: 44px; position: relative; flex-shrink: 0;
+}
+.deal-proba-ring svg { transform: rotate(-90deg); }
+.deal-proba-ring .ring-bg { fill: none; stroke: rgba(255,255,255,0.04); stroke-width: 3; }
+.deal-proba-ring .ring-fill { fill: none; stroke-width: 3; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+.deal-proba-text {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+}
+
+.deal-info { flex: 1; }
+.deal-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.deal-stage { font-size: 11px; color: var(--text-muted); }
+
+.deal-values { text-align: right; }
+.deal-pipeline { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; }
+.deal-ev { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--green); }
+
+/* Motivation banner */
+.motivation-banner {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(59, 130, 246, 0.08));
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  border-radius: 12px;
+  padding: 22px 28px;
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.motivation-icon { font-size: 36px; }
+.motivation-text h3 {
+  font-size: 16px; font-weight: 700; color: var(--green-bright);
+  margin-bottom: 4px; letter-spacing: -0.3px;
+}
+.motivation-text p { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+.motivation-text .highlight {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700; color: var(--green-bright);
+}
+
+/* ─── HISTORY ─── */
+.history-container { padding: 24px; }
+.history-filters {
+  display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+}
+.history-timeline { position: relative; }
+.history-item {
+  display: flex; gap: 14px; padding: 10px 0;
+  border-bottom: 1px solid rgba(26,39,68,0.3);
+  animation: fadeIn 0.2s ease;
+}
+.history-item:last-child { border-bottom: none; }
+.history-time {
+  width: 120px; flex-shrink: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--text-muted);
+  padding-top: 2px;
+}
+.history-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  margin-top: 5px; flex-shrink: 0;
+}
+.history-dot.upgrade { background: var(--green); box-shadow: 0 0 6px var(--green-bg); }
+.history-dot.downgrade { background: var(--red); box-shadow: 0 0 6px var(--red-bg); }
+.history-dot.new { background: var(--accent); box-shadow: 0 0 6px var(--accent-glow); }
+.history-dot.delete { background: var(--text-muted); }
+.history-dot.edit { background: var(--amber); }
+.history-dot.proba { background: var(--cyan); box-shadow: 0 0 6px var(--cyan-bg); }
+.history-content { flex: 1; }
+.history-prospect { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.history-detail { font-size: 12px; color: var(--text-secondary); }
+.history-badge {
+  display: inline-block; font-size: 10px; font-weight: 600;
+  padding: 1px 6px; border-radius: 3px; margin: 0 2px;
+}
+.badge-from { background: var(--red-bg); color: var(--red); }
+.badge-to { background: var(--green-bg); color: var(--green); }
+.badge-new { background: var(--accent-glow); color: var(--accent); }
+.badge-del { background: rgba(255,255,255,0.04); color: var(--text-muted); }
+
+.empty-state {
+  text-align: center; padding: 48px 20px; color: var(--text-muted);
+}
+.empty-state .icon { font-size: 32px; margin-bottom: 12px; opacity: 0.3; }
+.empty-state p { font-size: 13px; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 1100px) {
+  .panels { grid-template-columns: 1fr; }
+  .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+  .main-content { padding: 18px; }
+  .app-header { padding: 14px 18px; }
+  .tab-bar { padding: 0 18px; }
+  .closings-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo">
+    <div class="logo-mark">PT</div>
+    <div class="logo-text">Pipeline Tracker <span><span id="saveStatus" style="color:var(--green)">● saved locally</span></span></div>
+  </div>
+  <div class="header-actions">
+    <input type="file" id="importFileInput" accept=".csv,text/csv" style="display:none" onchange="handleImportFile(event)">
+    <button class="btn" onclick="document.getElementById('importFileInput').click()">↑ Import</button>
+    <button class="btn" onclick="exportHistory()">↓ History</button>
+    <button class="btn" onclick="exportCSV()">↓ CSV</button>
+    <button class="btn" onclick="openStagesModal()">⚙ Stages</button>
+    <button class="btn" onclick="resetAllData()" style="color:var(--red);border-color:rgba(239,68,68,0.3)">↺ Reset</button>
+    <button class="btn btn-primary" onclick="openModal()">+ Prospect</button>
+  </div>
+</header>
+
+<div class="tab-bar">
+  <div class="tab active" onclick="switchTab('pipeline')">Pipeline</div>
+  <div class="tab" onclick="switchTab('funnel')">Funnel</div>
+  <div class="tab" onclick="switchTab('velocity')">Velocity</div>
+  <div class="tab" onclick="switchTab('closings')">Closings</div>
+  <div class="tab" onclick="switchTab('probas')">Proba Monitor</div>
+  <div class="tab" onclick="switchTab('history')">History</div>
+</div>
+
+<main class="main-content">
+  <!-- ═══ PIPELINE TAB ═══ -->
+  <div class="tab-content active" id="tab-pipeline">
+    <div class="kpi-grid" id="kpiGrid"></div>
+    <div class="panels">
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Pipeline</div>
+            <div class="panel-subtitle" id="prospectCount"></div>
+          </div>
+        </div>
+        <div class="toolbar">
+          <div class="search-box">
+            <input type="text" placeholder="Search..." id="searchInput" oninput="renderTable()">
+          </div>
+          <select class="filter-select" id="filterStage" onchange="renderTable()">
+            <option value="all">All Stages</option>
+          </select>
+          <select class="filter-select" id="filterGeo" onchange="renderTable()">
+            <option value="all">All Regions</option>
+            <option value="Canada">Canada</option>
+            <option value="Europe">Europe</option>
+            <option value="US">US</option>
+            <option value="Global">Global</option>
+          </select>
+        </div>
+        <div class="table-wrapper">
+          <table class="pipeline-table">
+            <thead>
+              <tr>
+                <th onclick="sortBy('name')">Prospect ↕</th>
+                <th onclick="sortBy('estimate')">Pipeline ($m) ↕</th>
+                <th onclick="sortBy('statusKey')">Stage ↕</th>
+                <th onclick="sortBy('geo')">Region ↕</th>
+                <th onclick="sortBy('proba')">Proba ↕</th>
+                <th onclick="sortBy('ev')">EV ($m) ↕</th>
+                <th style="width:30px"></th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel" style="height:fit-content">
+        <div class="panel-header"><div class="panel-title">Analytics</div></div>
+        <div class="sidebar-section">
+          <h3>Probability Matrix</h3>
+          <div id="probaMatrix"></div>
+        </div>
+        <div class="sidebar-section">
+          <h3>By Stage</h3>
+          <div id="stageBreakdown"></div>
+        </div>
+        <div class="sidebar-section">
+          <h3>By Region</h3>
+          <div id="geoBreakdown"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ FUNNEL TAB ═══ -->
+  <div class="tab-content" id="tab-funnel">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Pipeline Funnel</div>
+        <div class="panel-subtitle">Prospects flow through engagement stages</div>
+      </div>
+      <div class="funnel-container" id="funnelChart"></div>
+    </div>
+  </div>
+
+  <!-- ═══ VELOCITY TAB ═══ -->
+  <div class="tab-content" id="tab-velocity">
+    <div id="velocityContent"></div>
+  </div>
+
+  <!-- ═══ CLOSINGS TAB ═══ -->
+  <div class="tab-content" id="tab-closings">
+    <div id="closingsContent"></div>
+  </div>
+
+  <!-- ═══ PROBA MONITOR TAB ═══ -->
+  <div class="tab-content" id="tab-probas">
+    <div id="probaMonitorContent"></div>
+  </div>
+
+  <!-- ═══ HISTORY TAB ═══ -->
+  <div class="tab-content" id="tab-history">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Activity Log</div>
+        <div class="panel-subtitle" id="historyCount"></div>
+      </div>
+      <div class="history-container">
+        <div class="history-filters">
+          <button class="btn btn-sm" onclick="filterHistory('all')" id="hf-all" style="border-color:var(--accent);color:var(--accent)">All</button>
+          <button class="btn btn-sm" onclick="filterHistory('upgrade')" id="hf-upgrade">↑ Upgrades</button>
+          <button class="btn btn-sm" onclick="filterHistory('downgrade')" id="hf-downgrade">↓ Downgrades</button>
+          <button class="btn btn-sm" onclick="filterHistory('new')" id="hf-new">+ New</button>
+          <button class="btn btn-sm" onclick="filterHistory('edit')" id="hf-edit">✎ Edits</button>
+          <button class="btn btn-sm" onclick="filterHistory('proba')" id="hf-proba">% Probas</button>
+          <button class="btn btn-sm" onclick="filterHistory('delete')" id="hf-delete">✕ Deleted</button>
+        </div>
+        <div class="history-timeline" id="historyTimeline"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- STAGES MODAL -->
+<div class="modal-overlay" id="stagesModal">
+  <div class="modal" style="width:640px;max-width:95vw">
+    <h2>Manage Stages</h2>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:14px">Edit, reorder, add or remove stages. On delete, prospects in that stage are moved to the next lower stage.</p>
+    <div id="stagesEditor"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="addStageRow()">+ Add stage</button>
+      <button class="btn btn-sm" onclick="resetStagesToDefault()" style="color:var(--amber)">↺ Reset to defaults</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeStagesModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStagesEditor()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2>Add Prospect</h2>
+    <div class="form-group">
+      <label>Prospect Name</label>
+      <input type="text" id="newName" placeholder="e.g. PROSPECT NAME">
+    </div>
+    <div class="form-group">
+      <label>Estimate ($m)</label>
+      <input type="number" id="newEstimate" placeholder="100" min="0">
+    </div>
+    <div class="form-group">
+      <label>Stage</label>
+      <select id="newStatus"></select>
+    </div>
+    <div class="form-group">
+      <label>Region</label>
+      <select id="newGeo">
+        <option value="Canada">Canada</option>
+        <option value="Europe">Europe</option>
+        <option value="US">US</option>
+        <option value="Global">Global</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="addProspect()">Add</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════
+const STORAGE_KEY_PROSPECTS = 'bgf_pipeline_prospects';
+const STORAGE_KEY_HISTORY = 'bgf_pipeline_history';
+const STORAGE_KEY_NEXTID = 'bgf_pipeline_nextid';
+const STORAGE_KEY_PROBAS = 'bgf_pipeline_probas';
+const STORAGE_KEY_PROBA_HISTORY = 'bgf_pipeline_proba_history';
+const STORAGE_KEY_STAGES = 'bgf_pipeline_stages';
+
+const ORIGINAL_PROBAS = {
+  '0': 0.03, '1': 0.15, '2': 0.20, '3': 0.35, '3a': 0.50, '4': 0.65, '4a': 0.80, '5': 1.00
+};
+// alias kept for backwards compat references
+const DEFAULT_PROBAS = ORIGINAL_PROBAS;
+
+const ORIGINAL_STATUS_LABELS = {
+  '0':  { label: 'Mail Answered', sort: 0, color: '#ef4444' },
+  '1':  { label: 'Called', sort: 1, color: '#f59e0b' },
+  '2':  { label: 'Met', sort: 2, color: '#06b6d4' },
+  '3':  { label: 'Met Founder/IC', sort: 3, color: '#8b5cf6' },
+  '3a': { label: 'Met Trader/Analyst', sort: 3.5, color: '#a78bfa' },
+  '4':  { label: 'ODD', sort: 4, color: '#10b981' },
+  '4a': { label: 'Informal Lunch', sort: 4.5, color: '#34d399' },
+  '5':  { label: 'Investment', sort: 5, color: '#fbbf24' },
+};
+
+function loadStages() {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY_STAGES);
+    if (s) {
+      const parsed = JSON.parse(s);
+      if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) return parsed;
+    }
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(ORIGINAL_STATUS_LABELS));
+}
+function saveStages() {
+  try { localStorage.setItem(STORAGE_KEY_STAGES, JSON.stringify(STATUS_LABELS)); } catch(e) {}
+}
+
+let STATUS_LABELS = loadStages();
+
+// Mutable proba map — loaded from localStorage or defaults
+let currentProbas = loadProbas();
+let probaSnapshots = loadProbaHistory();
+
+function loadProbas() {
+  try { const s = localStorage.getItem(STORAGE_KEY_PROBAS); if (s) return JSON.parse(s); } catch(e) {}
+  return { ...DEFAULT_PROBAS };
+}
+function loadProbaHistory() {
+  try { const s = localStorage.getItem(STORAGE_KEY_PROBA_HISTORY); if (s) return JSON.parse(s); } catch(e) {}
+  return [];
+}
+function saveProbas() {
+  try {
+    localStorage.setItem(STORAGE_KEY_PROBAS, JSON.stringify(currentProbas));
+    localStorage.setItem(STORAGE_KEY_PROBA_HISTORY, JSON.stringify(probaSnapshots));
+  } catch(e) {}
+}
+
+// Build a dynamic STATUS_CONFIG getter
+function getStatusConfig() {
+  const cfg = {};
+  for (const [k, meta] of Object.entries(STATUS_LABELS)) {
+    cfg[k] = { ...meta, proba: currentProbas[k] ?? DEFAULT_PROBAS[k] ?? 0 };
+  }
+  return cfg;
+}
+
+function updateProba(stageKey, newVal) {
+  const oldVal = currentProbas[stageKey];
+  newVal = Math.max(0, Math.min(1, newVal));
+  if (Math.abs(oldVal - newVal) < 0.001) return;
+
+  // Log change
+  const label = STATUS_LABELS[stageKey]?.label || stageKey;
+  logEvent('proba', 'SYSTEM', `Proba adjusted for <span class="history-badge badge-from">${stageKey.replace('a','*')} ${label}: ${(oldVal*100).toFixed(0)}%</span> → <span class="history-badge badge-to">${(newVal*100).toFixed(0)}%</span>`);
+
+  currentProbas[stageKey] = newVal;
+
+  // Snapshot
+  takeProbaSnapshot(`${stageKey.replace('a','*')} ${label}: ${(oldVal*100).toFixed(0)}% → ${(newVal*100).toFixed(0)}%`);
+
+  saveProbas();
+  renderAll();
+}
+
+function takeProbaSnapshot(reason) {
+  const k = computeKPIs();
+  probaSnapshots.push({
+    ts: Date.now(),
+    time: now(),
+    probas: { ...currentProbas },
+    totalEV: Math.round(k.totalEV),
+    convRate: parseFloat(k.conv.toFixed(1)),
+    reason: reason || 'Manual snapshot'
+  });
+  // Keep last 100 snapshots
+  if (probaSnapshots.length > 100) probaSnapshots = probaSnapshots.slice(-100);
+  saveProbas();
+}
+
+function resetProbas() {
+  if (confirm('Reset all probabilities to defaults?')) {
+    currentProbas = { ...DEFAULT_PROBAS };
+    takeProbaSnapshot('Reset to defaults');
+    saveProbas();
+    renderAll();
+  }
+}
+
+// ═══════════════════════════════════════════
+// PERSISTENCE — localStorage
+// ═══════════════════════════════════════════
+const DEFAULT_PROSPECTS = [];
+
+function loadData() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_PROSPECTS);
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return null;
+}
+
+function saveData() {
+  try {
+    localStorage.setItem(STORAGE_KEY_PROSPECTS, JSON.stringify(prospects));
+    localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(historyLog));
+    localStorage.setItem(STORAGE_KEY_NEXTID, String(nextId));
+    const el = document.getElementById('saveStatus');
+    if (el) { el.textContent = '● saved'; el.style.color = 'var(--green-bright)'; setTimeout(() => { el.textContent = '● saved locally'; el.style.color = 'var(--green)'; }, 800); }
+  } catch(e) { console.warn('localStorage save failed:', e); }
+}
+
+function loadHistory() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_HISTORY);
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return [];
+}
+
+function loadNextId() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_NEXTID);
+    if (saved) return parseInt(saved, 10);
+  } catch(e) {}
+  return 1;
+}
+
+function resetAllData() {
+  if (confirm('⚠️ Reset all data to initial state?\nThis will erase all changes, history, proba adjustments and custom stages.')) {
+    localStorage.removeItem(STORAGE_KEY_PROSPECTS);
+    localStorage.removeItem(STORAGE_KEY_HISTORY);
+    localStorage.removeItem(STORAGE_KEY_NEXTID);
+    localStorage.removeItem(STORAGE_KEY_PROBAS);
+    localStorage.removeItem(STORAGE_KEY_PROBA_HISTORY);
+    localStorage.removeItem(STORAGE_KEY_STAGES);
+    prospects = JSON.parse(JSON.stringify(DEFAULT_PROSPECTS));
+    historyLog = [];
+    nextId = 1;
+    currentProbas = { ...ORIGINAL_PROBAS };
+    probaSnapshots = [];
+    STATUS_LABELS = JSON.parse(JSON.stringify(ORIGINAL_STATUS_LABELS));
+    funnelExpanded = {};
+    renderAll();
+    renderHistory();
+  }
+}
+
+let prospects = loadData() || JSON.parse(JSON.stringify(DEFAULT_PROSPECTS));
+
+// Reconcile prospects with current stages (in case storage drifted)
+(function reconcileStages() {
+  const validKeys = new Set(Object.keys(STATUS_LABELS));
+  if (!validKeys.size) return;
+  const fallback = Object.entries(STATUS_LABELS).sort((a,b) => (a[1].sort||0) - (b[1].sort||0))[0][0];
+  prospects.forEach(p => { if (!validKeys.has(p.statusKey)) p.statusKey = fallback; });
+})();
+
+let nextId = loadNextId();
+let sortField = 'estimate';
+let sortDir = -1;
+let historyLog = loadHistory();
+let historyFilter = 'all';
+let funnelExpanded = {};
+
+function getProba(sk) { return currentProbas[sk] ?? 0; }
+function getProspectProba(p) {
+  return (typeof p.manualProba === 'number' && !isNaN(p.manualProba)) ? p.manualProba : getProba(p.statusKey);
+}
+function hasManualProba(p) { return typeof p.manualProba === 'number' && !isNaN(p.manualProba); }
+function getEV(p) { return p.estimate * getProspectProba(p); }
+function getSSort(k) { return STATUS_LABELS[k]?.sort || 0; }
+function getLabel(k) { return STATUS_LABELS[k]?.label || k; }
+function getColor(k) { return STATUS_LABELS[k]?.color || '#888'; }
+function now() { return new Date().toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }); }
+
+function logEvent(type, prospectName, detail) {
+  historyLog.unshift({ type, prospect: prospectName, detail, time: now(), ts: Date.now() });
+  saveData();
+}
+
+// ═══════════════════════════════════════════
+// VELOCITY — time-in-stage analytics
+// ═══════════════════════════════════════════
+function stripHtmlText(s) { return (s || '').replace(/<[^>]*>/g, ''); }
+
+function buildVelocityStats() {
+  const events = [...historyLog].sort((a,b) => a.ts - b.ts);
+  const timelines = {}; // name -> [{stage, ts}]
+
+  for (const e of events) {
+    if (!['new','upgrade','downgrade'].includes(e.type)) continue;
+    if (!e.prospect || e.prospect === 'IMPORT' || e.prospect === 'SYSTEM') continue;
+    const det = stripHtmlText(e.detail);
+    let stage = null;
+    if (e.type === 'new') {
+      const m = det.match(/—\s*([^\s]+)\s*[–\-]/);
+      if (m) stage = m[1].replace('*', 'a');
+    } else {
+      const m = det.match(/→\s*([^\s]+)/);
+      if (m) stage = m[1].replace('*', 'a');
+    }
+    if (!stage || !STATUS_LABELS[stage]) continue;
+    (timelines[e.prospect] = timelines[e.prospect] || []).push({ stage, ts: e.ts });
+  }
+
+  const completed = {}; // stage -> [durationMs] for prospects who left
+  for (const t of Object.values(timelines)) {
+    for (let i = 0; i < t.length - 1; i++) {
+      const dur = t[i+1].ts - t[i].ts;
+      if (dur > 0) (completed[t[i].stage] = completed[t[i].stage] || []).push(dur);
+    }
+  }
+
+  const nowMs = Date.now();
+  const current = {}; // stage -> [{name, durationMs}] for prospects currently there
+  for (const p of prospects) {
+    const t = timelines[p.name];
+    if (!t || !t.length) continue;
+    let entered = null;
+    for (let i = t.length - 1; i >= 0; i--) {
+      if (t[i].stage === p.statusKey) { entered = t[i].ts; break; }
+    }
+    if (entered == null) continue;
+    const dur = nowMs - entered;
+    if (dur >= 0) (current[p.statusKey] = current[p.statusKey] || []).push({ name: p.name, durationMs: dur });
+  }
+
+  return { timelines, completed, current };
+}
+
+function vAvg(arr) { return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
+function vMedian(arr) {
+  if (!arr.length) return 0;
+  const s = [...arr].sort((a,b)=>a-b);
+  return s.length%2 ? s[(s.length-1)/2] : (s[s.length/2-1]+s[s.length/2])/2;
+}
+function fmtDuration(ms) {
+  if (ms == null || ms <= 0) return '—';
+  const days = ms / 86400000;
+  if (days < 1) return '<1d';
+  if (days < 60) return `${Math.round(days)}d`;
+  return `${(days/30.44).toFixed(1)}mo`;
+}
+
+// ═══════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.tab-content#tab-${id}`).classList.add('active');
+  event.target.classList.add('active');
+  if (id === 'funnel') renderFunnel();
+  if (id === 'velocity') renderVelocity();
+  if (id === 'closings') renderClosings();
+  if (id === 'probas') renderProbaMonitor();
+  if (id === 'history') renderHistory();
+}
+
+// ═══════════════════════════════════════════
+// KPIs
+// ═══════════════════════════════════════════
+function computeKPIs() {
+  const tp = prospects.reduce((s,p) => s+p.estimate, 0);
+  const tev = prospects.reduce((s,p) => s+getEV(p), 0);
+  return { totalPipeline:tp, totalEV:tev, conv: tp>0?(tev/tp*100):0, avg: prospects.length>0?tp/prospects.length:0, count:prospects.length };
+}
+
+function renderKPIs() {
+  const k = computeKPIs();
+  const adv = prospects.filter(p => getSSort(p.statusKey)>=3).length;
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi-card blue"><div class="kpi-label">Total Pipeline</div><div class="kpi-value">$${k.totalPipeline.toLocaleString()}m</div><div class="kpi-sub">${k.count} prospects</div></div>
+    <div class="kpi-card green"><div class="kpi-label">Expected Value</div><div class="kpi-value">$${Math.round(k.totalEV).toLocaleString()}m</div><div class="kpi-sub">probability-weighted</div></div>
+    <div class="kpi-card amber"><div class="kpi-label">Conversion Rate</div><div class="kpi-value">${k.conv.toFixed(1)}%</div><div class="kpi-sub">EV / pipeline</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">Avg Ticket</div><div class="kpi-value">$${Math.round(k.avg)}m</div><div class="kpi-sub">per prospect</div></div>
+    <div class="kpi-card cyan"><div class="kpi-label">Stage 3+</div><div class="kpi-value">${k.count>0?((adv/k.count)*100).toFixed(0):0}%</div><div class="kpi-sub">${adv} advanced</div></div>`;
+}
+
+// ═══════════════════════════════════════════
+// TABLE
+// ═══════════════════════════════════════════
+function renderTable() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const sf = document.getElementById('filterStage').value;
+  const gf = document.getElementById('filterGeo').value;
+  let filtered = prospects.filter(p => {
+    if (search && !p.name.toLowerCase().includes(search)) return false;
+    if (sf !== 'all' && p.statusKey !== sf) return false;
+    if (gf !== 'all' && p.geo !== gf) return false;
+    return true;
+  });
+  filtered.sort((a,b) => {
+    let va, vb;
+    if (sortField==='ev') { va=getEV(a); vb=getEV(b); }
+    else if (sortField==='proba') { va=getProspectProba(a); vb=getProspectProba(b); }
+    else if (sortField==='statusKey') { va=getSSort(a.statusKey); vb=getSSort(b.statusKey); }
+    else if (sortField==='name') { va=a.name; vb=b.name; }
+    else { va=a[sortField]; vb=b[sortField]; }
+    return typeof va==='string' ? sortDir*va.localeCompare(vb) : sortDir*(va-vb);
+  });
+  const maxEV = Math.max(...prospects.map(p=>getEV(p)),1);
+  const tF = filtered.reduce((s,p)=>s+p.estimate,0);
+  const eF = filtered.reduce((s,p)=>s+getEV(p),0);
+  document.getElementById('prospectCount').textContent = `${filtered.length} of ${prospects.length}`;
+
+  document.getElementById('tableBody').innerHTML = filtered.map((p,i) => {
+    const ev = getEV(p);
+    const pct = maxEV>0?(ev/maxEV*100):0;
+    const bc = ev>100?'var(--green)':ev>30?'var(--accent)':'var(--text-muted)';
+    const override = hasManualProba(p);
+    const probaVal = (getProspectProba(p) * 100).toFixed(0);
+    const stageDefault = (getProba(p.statusKey) * 100).toFixed(0);
+    const probaTitle = override
+      ? `Manual override (stage default: ${stageDefault}%) — click to edit, ↺ to reset`
+      : `Stage default: ${stageDefault}% — click to set a manual override`;
+    return `<tr style="animation-delay:${i*0.015}s">
+      <td class="prospect-name">${p.name}</td>
+      <td><input class="edit-estimate mono" type="number" value="${p.estimate}" min="0" onchange="updateEstimate(${p.id},this.value)"></td>
+      <td><select class="status-select" onchange="updateStatus(${p.id},this.value)">${Object.entries(getStatusConfig()).map(([k,c])=>`<option value="${k}" ${k===p.statusKey?'selected':''}>${k.replace('a','*')} – ${c.label} (${(c.proba*100).toFixed(0)}%)</option>`).join('')}</select></td>
+      <td><span class="geo-tag">${p.geo}</span></td>
+      <td><div class="proba-cell" title="${probaTitle}">
+        ${override ? '<span class="proba-cell-dot"></span>' : ''}
+        <input type="number" class="proba-cell-input ${override?'override':''}" value="${probaVal}" min="0" max="100" step="1" onchange="updateProspectProba(${p.id},this.value)">
+        <span style="font-size:10px;color:var(--text-muted)">%</span>
+        ${override ? `<button class="proba-cell-reset" onclick="resetProspectProba(${p.id})" title="Reset to stage default">↺</button>` : ''}
+      </div></td>
+      <td><div class="ev-bar-container"><div class="ev-bar"><div class="ev-bar-fill" style="width:${pct}%;background:${bc}"></div></div><span class="ev-val" style="color:${bc}">${ev.toFixed(1)}</span></div></td>
+      <td><button class="delete-btn" onclick="deleteProspect(${p.id})" title="Remove">✕</button></td>
+    </tr>`;
+  }).join('') + `<tr class="totals-row"><td class="prospect-name" style="color:var(--accent)">TOTAL</td><td class="mono" style="font-weight:700;color:var(--accent)">$${tF.toLocaleString()}</td><td></td><td></td><td></td><td class="mono" style="font-weight:700;color:var(--green)">$${eF.toFixed(1)}</td><td></td></tr>`;
+}
+
+function renderSidebar() {
+  document.getElementById('probaMatrix').innerHTML = Object.entries(getStatusConfig()).map(([k,c])=>`
+    <div class="proba-row">
+      <span class="proba-label">${k.replace('a','*')} – ${c.label}</span>
+      <input type="number" class="proba-input" value="${(c.proba*100).toFixed(0)}" min="0" max="100" step="1"
+        onchange="updateProba('${k}', this.value/100)" title="Click to adjust">
+      <span style="font-size:10px;color:var(--text-muted)">%</span>
+      <div class="proba-bar"><div class="proba-bar-fill" style="width:${c.proba*100}%"></div></div>
+    </div>`).join('') + `
+    <div style="margin-top:8px;display:flex;gap:6px;justify-content:flex-end">
+      <button class="btn btn-sm" onclick="takeProbaSnapshot('Manual snapshot')" style="font-size:10px">📸 Snapshot</button>
+      <button class="btn btn-sm" onclick="resetProbas()" style="font-size:10px;color:var(--red)">↺ Reset</button>
+    </div>`;
+
+  const stages = {};
+  prospects.forEach(p => { if (!stages[p.statusKey]) stages[p.statusKey]={count:0,pipe:0,ev:0}; stages[p.statusKey].count++; stages[p.statusKey].pipe+=p.estimate; stages[p.statusKey].ev+=getEV(p); });
+  document.getElementById('stageBreakdown').innerHTML = Object.entries(getStatusConfig()).filter(([k])=>stages[k]).map(([k,c])=>{
+    const s=stages[k]; return `<div class="stage-row"><div><div class="stage-name">${k.replace('a','*')} – ${c.label}</div><div class="stage-count">${s.count} prospect${s.count>1?'s':''}</div></div><div style="text-align:right"><div class="stage-pipeline">$${s.pipe.toLocaleString()}m</div><div class="stage-ev">EV $${s.ev.toFixed(0)}m</div></div></div>`;
+  }).join('');
+
+  const geos = {};
+  prospects.forEach(p => { if (!geos[p.geo]) geos[p.geo]={count:0,pipe:0,ev:0}; geos[p.geo].count++; geos[p.geo].pipe+=p.estimate; geos[p.geo].ev+=getEV(p); });
+  document.getElementById('geoBreakdown').innerHTML = Object.entries(geos).sort((a,b)=>b[1].pipe-a[1].pipe).map(([g,d])=>
+    `<div class="geo-row"><span class="geo-name">${g} <span style="color:var(--text-muted)">(${d.count})</span></span><span class="geo-value">$${d.pipe.toLocaleString()}m → <span style="color:var(--green)">$${d.ev.toFixed(0)}m</span></span></div>`).join('');
+}
+
+// ═══════════════════════════════════════════
+// FUNNEL
+// ═══════════════════════════════════════════
+function renderFunnel() {
+  const stageOrder = ['0','1','2','3','3a','4','4a','5'];
+  const stageData = stageOrder.map(k => {
+    const ps = prospects.filter(p => p.statusKey === k);
+    return { key: k, cfg: getStatusConfig()[k], count: ps.length, pipeline: ps.reduce((s,p)=>s+p.estimate,0), ev: ps.reduce((s,p)=>s+getEV(p),0) };
+  }).filter(s => s.count > 0);
+
+  const maxPipe = Math.max(...stageData.map(s=>s.pipeline), 1);
+  const totalPipe = prospects.reduce((s,p)=>s+p.estimate,0);
+  const vel = buildVelocityStats();
+
+  let html = '';
+  stageData.forEach((s, i) => {
+    const widthPct = Math.max(12, (s.pipeline / maxPipe) * 100);
+    const opacity = 0.5 + (getSSort(s.key) / 5) * 0.5;
+    const isOpen = !!funnelExpanded[s.key];
+    const arrow = isOpen ? '▾' : '▸';
+    const compArr = vel.completed[s.key] || [];
+    const curArr = vel.current[s.key] || [];
+    const avgComp = vAvg(compArr);
+    const avgCur = vAvg(curArr.map(x=>x.durationMs));
+    const timingLabel = compArr.length
+      ? `avg ${fmtDuration(avgComp)} in stage (n=${compArr.length})`
+      : curArr.length ? `avg ${fmtDuration(avgCur)} current` : '';
+    html += `
+      <div class="funnel-stage">
+        <div class="funnel-label">${s.key.replace('a','*')} – ${s.cfg.label}<br><span style="font-size:10px;color:var(--text-muted)">${s.count} prospect${s.count>1?'s':''}</span>${timingLabel?`<br><span style="font-size:10px;color:var(--cyan);font-family:'JetBrains Mono',monospace">⏱ ${timingLabel}</span>`:''}</div>
+        <div class="funnel-bar-wrap">
+          <div class="funnel-bar" style="width:${widthPct}%;background:${s.cfg.color};opacity:${opacity}" onclick="toggleFunnelStage('${s.key}')" title="Click to ${isOpen?'collapse':'expand'}">
+            <span class="funnel-bar-text">${arrow} $${s.pipeline.toLocaleString()}m</span>
+            <span class="funnel-bar-sub">${(s.pipeline/totalPipe*100).toFixed(1)}% of pipeline</span>
+          </div>
+        </div>
+        <div class="funnel-meta">EV $${s.ev.toFixed(0)}m<br><span style="font-size:10px;color:var(--text-muted)">${(s.cfg.proba*100).toFixed(0)}% proba</span></div>
+      </div>`;
+
+    if (isOpen) {
+      const ps = prospects.filter(p => p.statusKey === s.key).sort((a,b) => b.estimate - a.estimate);
+      const curMap = {};
+      (vel.current[s.key] || []).forEach(c => curMap[c.name] = c.durationMs);
+      const rows = ps.length
+        ? ps.map(p => {
+            const dur = curMap[p.name];
+            const since = dur ? `<span style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-left:6px">· ${fmtDuration(dur)} in stage</span>` : '';
+            return `<div class="funnel-expand-row">
+              <span class="fe-name">${p.name}${since}</span>
+              <span class="fe-pipe">$${p.estimate}m</span>
+              <span class="fe-geo"><span class="geo-tag">${p.geo}</span></span>
+              <span class="fe-ev">EV $${getEV(p).toFixed(1)}m</span>
+            </div>`;
+          }).join('')
+        : `<div class="funnel-expand-empty">No prospects in this stage.</div>`;
+      html += `<div class="funnel-expand">${rows}</div>`;
+    }
+
+    if (i < stageData.length - 1) {
+      html += `<div class="funnel-connector"><span class="funnel-connector-arrow">▼</span></div>`;
+    }
+  });
+
+  // Summary at bottom
+  const totalEV = prospects.reduce((s,p)=>s+getEV(p),0);
+  html += `
+    <div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--border);display:flex;justify-content:center;gap:48px;">
+      <div style="text-align:center">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">Total Pipeline</div>
+        <div style="font-family:'JetBrains Mono';font-size:24px;font-weight:700;color:var(--accent)">$${totalPipe.toLocaleString()}m</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:24px;color:var(--text-muted)">→</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">Expected Value</div>
+        <div style="font-family:'JetBrains Mono';font-size:24px;font-weight:700;color:var(--green)">$${Math.round(totalEV).toLocaleString()}m</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px">Conversion</div>
+        <div style="font-family:'JetBrains Mono';font-size:24px;font-weight:700;color:var(--amber)">${(totalEV/totalPipe*100).toFixed(1)}%</div>
+      </div>
+    </div>`;
+
+  document.getElementById('funnelChart').innerHTML = html;
+}
+
+function toggleFunnelStage(key) {
+  funnelExpanded[key] = !funnelExpanded[key];
+  renderFunnel();
+}
+
+// ═══════════════════════════════════════════
+// VELOCITY TAB
+// ═══════════════════════════════════════════
+function renderVelocity() {
+  const vel = buildVelocityStats();
+  const stageOrder = ['0','1','2','3','3a','4','4a','5'];
+  const SC = getStatusConfig();
+
+  // Per-stage table
+  const stageRows = stageOrder.map(k => {
+    const cfg = SC[k];
+    const comp = vel.completed[k] || [];
+    const cur = vel.current[k] || [];
+    const avgComp = vAvg(comp);
+    const medComp = vMedian(comp);
+    const avgCur = vAvg(cur.map(c => c.durationMs));
+    const longestCur = cur.length ? Math.max(...cur.map(c => c.durationMs)) : 0;
+    return { k, label: cfg.label, color: cfg.color, comp, cur, avgComp, medComp, avgCur, longestCur };
+  });
+
+  // Full-pipeline avg: time from first event to "Investment" stage entry, per prospect
+  let totalDurations = [];
+  for (const [name, t] of Object.entries(vel.timelines)) {
+    const first = t[0];
+    const reachedInv = t.find(x => x.stage === '5');
+    if (first && reachedInv && reachedInv.ts > first.ts) {
+      totalDurations.push(reachedInv.ts - first.ts);
+    }
+  }
+  const avgFull = vAvg(totalDurations);
+  const medFull = vMedian(totalDurations);
+
+  // Stuck list: prospects currently in stage, sorted by time-in-stage descending
+  const allCurrent = [];
+  for (const [stage, arr] of Object.entries(vel.current)) {
+    arr.forEach(c => allCurrent.push({ ...c, stage }));
+  }
+  allCurrent.sort((a,b) => b.durationMs - a.durationMs);
+  const stuckList = allCurrent.slice(0, 12);
+
+  // Movers: last 30 days events
+  const cutoff = Date.now() - 30 * 86400000;
+  const recentMoves = historyLog.filter(h => h.ts > cutoff && (h.type === 'upgrade' || h.type === 'downgrade'));
+  const upgrades30 = recentMoves.filter(h => h.type === 'upgrade').length;
+  const downgrades30 = recentMoves.filter(h => h.type === 'downgrade').length;
+
+  let html = `
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">
+      <div class="kpi-card cyan">
+        <div class="kpi-label">Avg full cycle</div>
+        <div class="kpi-value" style="font-size:22px">${fmtDuration(avgFull)}</div>
+        <div class="kpi-sub">${totalDurations.length} prospects reached stage 5</div>
+      </div>
+      <div class="kpi-card purple">
+        <div class="kpi-label">Median full cycle</div>
+        <div class="kpi-value" style="font-size:22px">${fmtDuration(medFull)}</div>
+        <div class="kpi-sub">first event → investment</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">Upgrades · last 30d</div>
+        <div class="kpi-value" style="font-size:22px">${upgrades30}</div>
+        <div class="kpi-sub">moving forward</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">Downgrades · last 30d</div>
+        <div class="kpi-value" style="font-size:22px">${downgrades30}</div>
+        <div class="kpi-sub">moving backward</div>
+      </div>
+    </div>
+
+    <div class="panels" style="grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Time per Stage</div>
+            <div class="panel-subtitle">based on observed transitions</div>
+          </div>
+        </div>
+        <div style="padding:12px 18px">
+          <div style="display:grid;grid-template-columns:1.4fr 0.8fr 0.8fr 0.6fr 0.9fr;gap:8px;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+            <span>Stage</span>
+            <span style="text-align:right">Avg</span>
+            <span style="text-align:right">Median</span>
+            <span style="text-align:right">n</span>
+            <span style="text-align:right">Current avg</span>
+          </div>
+          ${stageRows.map(r => `
+            <div style="display:grid;grid-template-columns:1.4fr 0.8fr 0.8fr 0.6fr 0.9fr;gap:8px;font-size:12px;padding:7px 0;border-bottom:1px solid rgba(26,39,68,0.3);align-items:center">
+              <span><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${r.color};margin-right:6px"></span>${r.k.replace('a','*')} – ${r.label}</span>
+              <span style="text-align:right;font-family:'JetBrains Mono',monospace;color:${r.comp.length?'var(--text-primary)':'var(--text-muted)'}">${fmtDuration(r.avgComp)}</span>
+              <span style="text-align:right;font-family:'JetBrains Mono',monospace;color:var(--text-secondary)">${fmtDuration(r.medComp)}</span>
+              <span style="text-align:right;font-family:'JetBrains Mono',monospace;color:var(--text-muted)">${r.comp.length}</span>
+              <span style="text-align:right;font-family:'JetBrains Mono',monospace;color:${r.cur.length?'var(--cyan)':'var(--text-muted)'}">${r.cur.length?fmtDuration(r.avgCur):'—'}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">⚠ Stuck Prospects</div>
+            <div class="panel-subtitle">longest time in current stage</div>
+          </div>
+        </div>
+        <div style="padding:12px 18px">
+          ${stuckList.length === 0
+            ? `<div class="empty-state" style="padding:24px 0"><div class="icon">📊</div><p>No stage-change history yet.<br>Move a prospect's stage to start tracking velocity.</p></div>`
+            : stuckList.map(c => {
+                const p = prospects.find(p => p.name === c.name);
+                if (!p) return '';
+                const cfg = SC[c.stage];
+                const days = c.durationMs / 86400000;
+                const compArr = vel.completed[c.stage] || [];
+                const avgComp = vAvg(compArr);
+                const isStuck = avgComp > 0 && c.durationMs > avgComp * 1.5;
+                const color = isStuck ? 'var(--red)' : days > 60 ? 'var(--amber)' : 'var(--text-secondary)';
+                return `
+                  <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(26,39,68,0.3);font-size:12px">
+                    <span style="width:8px;height:8px;border-radius:50%;background:${cfg.color};flex-shrink:0"></span>
+                    <div style="flex:1">
+                      <div style="font-weight:600">${c.name}</div>
+                      <div style="font-size:10px;color:var(--text-muted)">${c.stage.replace('a','*')} – ${cfg.label} · $${p.estimate}m</div>
+                    </div>
+                    <span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:${color}">${fmtDuration(c.durationMs)}${isStuck?' ⚠':''}</span>
+                  </div>`;
+              }).join('')
+          }
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('velocityContent').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+// CLOSINGS
+// ═══════════════════════════════════════════
+function renderClosings() {
+  const totalEV = prospects.reduce((s,p)=>s+getEV(p),0);
+  const totalPipe = prospects.reduce((s,p)=>s+p.estimate,0);
+
+  // Scenario multipliers on top of base proba
+  const optimistic = prospects.reduce((s,p) => s + p.estimate * Math.min(1, getProba(p.statusKey) * 1.5), 0);
+  const base = totalEV;
+  const conservative = prospects.reduce((s,p) => s + p.estimate * getProba(p.statusKey) * 0.65, 0);
+  const pessimistic = prospects.reduce((s,p) => s + p.estimate * getProba(p.statusKey) * 0.35, 0);
+
+  // Top prospects by EV
+  const topDeals = [...prospects].sort((a,b) => getEV(b) - getEV(a)).slice(0, 12);
+
+  // Motivation metrics
+  const stage3plus = prospects.filter(p => getSSort(p.statusKey) >= 3);
+  const stage3plusEV = stage3plus.reduce((s,p) => s+getEV(p), 0);
+  const top5ev = topDeals.slice(0,5).reduce((s,p) => s+getEV(p), 0);
+
+  // Dynamic "move the needle" example: pick the top deal that has a next-stage to move to
+  let needleSentence = '';
+  const top = topDeals[0];
+  if (top) {
+    const orderedKeys = getStagesOrdered().map(([k]) => k);
+    const idx = orderedKeys.indexOf(top.statusKey);
+    const nextKey = idx >= 0 && idx < orderedKeys.length - 1 ? orderedKeys[idx+1] : null;
+    if (nextKey) {
+      const curProba = getProspectProba(top);
+      const nextProba = currentProbas[nextKey] ?? 0;
+      const evDelta = top.estimate * (nextProba - curProba);
+      const nextLabel = STATUS_LABELS[nextKey].label;
+      if (evDelta > 0) {
+        needleSentence = `Chaque upgrade de stage fait bouger l'aiguille — moving <span class="highlight">${top.name}</span> from ${STATUS_LABELS[top.statusKey].label} to ${nextLabel} adds <span class="highlight">+$${evDelta.toFixed(0)}m</span> in a single move.`;
+      }
+    }
+  }
+
+  const circumference = Math.PI * 2 * 18;
+
+  let html = `
+    <div class="closings-grid">
+      <div class="closing-card optimistic">
+        <div class="closing-scenario">🚀 Optimistic</div>
+        <div class="closing-value" style="color:var(--green-bright)">$${Math.round(optimistic).toLocaleString()}m</div>
+        <div class="closing-desc">Proba ×1.5 — strong market, proactive follow-up, fast ODD turnaround</div>
+      </div>
+      <div class="closing-card base">
+        <div class="closing-scenario">📊 Base Case</div>
+        <div class="closing-value" style="color:var(--accent)">$${Math.round(base).toLocaleString()}m</div>
+        <div class="closing-desc">Current probability-weighted expected value</div>
+      </div>
+      <div class="closing-card conservative">
+        <div class="closing-scenario">⚠️ Conservative</div>
+        <div class="closing-value" style="color:var(--amber)">$${Math.round(conservative).toLocaleString()}m</div>
+        <div class="closing-desc">Proba ×0.65 — longer cycles, allocation delays, budget freezes</div>
+      </div>
+      <div class="closing-card pessimistic">
+        <div class="closing-scenario">🛡️ Stress</div>
+        <div class="closing-value" style="color:var(--red)">$${Math.round(pessimistic).toLocaleString()}m</div>
+        <div class="closing-desc">Proba ×0.35 — market shock, risk-off, institutional retrenchment</div>
+      </div>
+    </div>
+
+    <div class="closing-deals-section">
+      <div class="closing-section-title"><div class="dot" style="background:var(--green)"></div>Top 12 Deals by Expected Value — Your Closing Targets</div>
+      ${topDeals.map(p => {
+        const proba = getProba(p.statusKey);
+        const ev = getEV(p);
+        const cfg = getStatusConfig()[p.statusKey];
+        const offset = circumference * (1 - proba);
+        return `<div class="deal-card">
+          <div class="deal-proba-ring">
+            <svg width="44" height="44" viewBox="0 0 44 44">
+              <circle class="ring-bg" cx="22" cy="22" r="18"/>
+              <circle class="ring-fill" cx="22" cy="22" r="18" stroke="${cfg.color}" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"/>
+            </svg>
+            <span class="deal-proba-text" style="color:${cfg.color}">${(proba*100).toFixed(0)}%</span>
+          </div>
+          <div class="deal-info">
+            <div class="deal-name">${p.name}</div>
+            <div class="deal-stage">${p.statusKey.replace('a','*')} – ${cfg.label} · ${p.geo}</div>
+          </div>
+          <div class="deal-values">
+            <div class="deal-pipeline">$${p.estimate}m</div>
+            <div class="deal-ev">EV $${ev.toFixed(1)}m</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="motivation-banner">
+      <div class="motivation-icon">🎯</div>
+      <div class="motivation-text">
+        <h3>Tu es plus proche que tu ne le penses</h3>
+        <p>
+          <span class="highlight">${stage3plus.length}</span> prospects sont déjà en Stage 3+ pour un EV de <span class="highlight">$${Math.round(stage3plusEV)}m</span>.
+          Tes 5 meilleurs deals seuls valent <span class="highlight">$${Math.round(top5ev)}m</span> en expected value.
+          ${needleSentence}
+          Focus on moving the needle on your top 5.
+        </p>
+      </div>
+    </div>`;
+
+  document.getElementById('closingsContent').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+// PROBA MONITOR
+// ═══════════════════════════════════════════
+function renderProbaMonitor() {
+  const SC = getStatusConfig();
+
+  // Current vs Default comparison
+  let compareHtml = Object.entries(SC).map(([k, c]) => {
+    const def = DEFAULT_PROBAS[k] || 0;
+    const cur = c.proba;
+    const delta = cur - def;
+    const deltaClass = delta > 0.001 ? 'delta-up' : delta < -0.001 ? 'delta-down' : 'delta-flat';
+    const deltaStr = delta > 0.001 ? `+${(delta*100).toFixed(0)}` : delta < -0.001 ? `${(delta*100).toFixed(0)}` : '—';
+    return `<div class="proba-compare-row">
+      <span class="proba-compare-label">${k.replace('a','*')} – ${c.label}</span>
+      <span class="proba-compare-default">${(def*100).toFixed(0)}%</span>
+      <span style="color:var(--text-muted);font-size:10px">→</span>
+      <span class="proba-compare-current">${(cur*100).toFixed(0)}%</span>
+      <span class="proba-compare-delta ${deltaClass}">${deltaStr}</span>
+    </div>`;
+  }).join('');
+
+  // EV sensitivity: what happens if each stage proba moves ±5%
+  const currentTotalEV = prospects.reduce((s,p) => s + getEV(p), 0);
+  let sensitivityHtml = Object.entries(SC).filter(([k]) => k !== '5').map(([k, c]) => {
+    const stageProspects = prospects.filter(p => p.statusKey === k);
+    const stagePipeline = stageProspects.reduce((s,p) => s + p.estimate, 0);
+    const impactPer5 = stagePipeline * 0.05;
+    return { key: k, label: c.label, pipeline: stagePipeline, impact: impactPer5, count: stageProspects.length };
+  }).filter(s => s.pipeline > 0).sort((a,b) => b.impact - a.impact).map(s =>
+    `<div class="proba-compare-row">
+      <span class="proba-compare-label">${s.key.replace('a','*')} – ${s.label} <span style="color:var(--text-muted)">(${s.count})</span></span>
+      <span class="proba-compare-current" style="color:var(--green)">±$${s.impact.toFixed(0)}m</span>
+    </div>`
+  ).join('');
+
+  // Snapshot timeline
+  const snaps = [...probaSnapshots].reverse().slice(0, 20);
+  const maxEV = snaps.length > 0 ? Math.max(...snaps.map(s => s.totalEV)) : 1;
+
+  let snapshotTableHtml = '';
+  if (snaps.length === 0) {
+    snapshotTableHtml = `<div class="empty-state"><div class="icon">📊</div><p>No snapshots yet. Adjust a probability or click "📸 Snapshot" in the sidebar to create one.</p></div>`;
+  } else {
+    snapshotTableHtml = snaps.map((s, i) => {
+      const prevEV = i < snaps.length - 1 ? snaps[i+1].totalEV : s.totalEV;
+      const evDelta = s.totalEV - prevEV;
+      const evDeltaClass = evDelta > 0 ? 'delta-up' : evDelta < 0 ? 'delta-down' : 'delta-flat';
+      const evDeltaStr = evDelta > 0 ? `+$${evDelta}m` : evDelta < 0 ? `-$${Math.abs(evDelta)}m` : '—';
+      return `<div class="snapshot-row">
+        <span class="snapshot-time">${s.time}</span>
+        <span class="snapshot-reason">${s.reason}</span>
+        <span class="snapshot-ev">$${s.totalEV}m</span>
+        <span class="snapshot-conv">${s.convRate}%</span>
+        <span class="proba-compare-delta ${evDeltaClass}" style="width:60px">${evDeltaStr}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Mini EV chart from snapshots (chronological)
+  const chronSnaps = [...probaSnapshots].slice(-15);
+  let chartHtml = '';
+  if (chronSnaps.length >= 2) {
+    const chartMax = Math.max(...chronSnaps.map(s => s.totalEV));
+    const chartMin = Math.min(...chronSnaps.map(s => s.totalEV)) * 0.8;
+    const range = chartMax - chartMin || 1;
+    const barWidth = 28;
+    const gap = 6;
+    const totalWidth = chronSnaps.length * (barWidth + gap);
+    chartHtml = `<div class="ev-chart" style="overflow-x:auto">
+      <div style="position:relative;height:140px;min-width:${totalWidth + 20}px">
+        <div class="ev-chart-baseline"></div>
+        ${chronSnaps.map((s, i) => {
+          const h = Math.max(4, ((s.totalEV - chartMin) / range) * 100);
+          const color = i === chronSnaps.length - 1 ? 'var(--green)' : 'var(--accent)';
+          const x = i * (barWidth + gap) + 10;
+          return `<div class="ev-chart-bar-group" style="left:${x}px">
+            <span class="ev-chart-value" style="color:${color};position:absolute;bottom:${h + 24}px">$${s.totalEV}</span>
+            <div class="ev-chart-bar" style="height:${h}px;background:${color};position:absolute;bottom:20px"></div>
+            <span class="ev-chart-label" style="position:absolute;bottom:0">${s.time.split(',')[0]}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('probaMonitorContent').innerHTML = `
+    <div class="monitor-grid">
+      <div class="monitor-card">
+        <h4>Current vs Default Probabilities</h4>
+        <div style="display:flex;gap:8px;margin-bottom:10px;font-size:10px;color:var(--text-muted)">
+          <span style="flex:1">Stage</span><span style="width:36px;text-align:right">Default</span>
+          <span style="width:12px"></span><span style="width:36px;text-align:right">Current</span>
+          <span style="width:44px;text-align:right">Delta</span>
+        </div>
+        ${compareHtml}
+      </div>
+      <div class="monitor-card">
+        <h4>EV Sensitivity per ±5% Proba Move</h4>
+        <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Impact on total EV if stage probability shifts by 5 points</p>
+        ${sensitivityHtml}
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:12px">
+          <span style="color:var(--text-muted)">Current Total EV:</span>
+          <span style="font-family:'JetBrains Mono';font-weight:700;color:var(--green);float:right">$${Math.round(currentTotalEV).toLocaleString()}m</span>
+        </div>
+      </div>
+    </div>
+
+    ${chronSnaps.length >= 2 ? `<div class="panel" style="margin-bottom:18px">
+      <div class="panel-header"><div class="panel-title">EV Evolution</div><div class="panel-subtitle">${chronSnaps.length} snapshots</div></div>
+      <div style="padding:16px 20px">${chartHtml}</div>
+    </div>` : ''}
+
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Snapshot History</div>
+          <div class="panel-subtitle">${probaSnapshots.length} snapshot${probaSnapshots.length!==1?'s':''}</div>
+        </div>
+        <button class="btn btn-sm" onclick="takeProbaSnapshot('Manual snapshot');renderProbaMonitor()">📸 Take Snapshot</button>
+      </div>
+      <div style="padding:14px 20px">
+        ${snaps.length > 0 ? `<div style="display:flex;gap:8px;margin-bottom:8px;font-size:10px;color:var(--text-muted)">
+          <span style="width:100px">Time</span><span style="flex:1">Reason</span>
+          <span style="width:70px;text-align:right">EV</span>
+          <span style="width:50px;text-align:right">Conv.</span>
+          <span style="width:60px;text-align:right">ΔEV</span>
+        </div>` : ''}
+        ${snapshotTableHtml}
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════
+function renderHistory() {
+  const filtered = historyFilter === 'all' ? historyLog : historyLog.filter(h => h.type === historyFilter);
+
+  document.querySelectorAll('[id^="hf-"]').forEach(b => { b.style.borderColor = 'var(--border)'; b.style.color = 'var(--text-secondary)'; });
+  const active = document.getElementById(`hf-${historyFilter}`);
+  if (active) { active.style.borderColor = 'var(--accent)'; active.style.color = 'var(--accent)'; }
+
+  document.getElementById('historyCount').textContent = `${filtered.length} event${filtered.length!==1?'s':''}`;
+
+  if (filtered.length === 0) {
+    document.getElementById('historyTimeline').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📋</div>
+        <p>No activity yet.<br>Changes to prospect stages, estimates, and additions will appear here.</p>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('historyTimeline').innerHTML = filtered.map(h => `
+    <div class="history-item">
+      <div class="history-time">${h.time}</div>
+      <div class="history-dot ${h.type}"></div>
+      <div class="history-content">
+        <div class="history-prospect">${h.prospect}</div>
+        <div class="history-detail">${h.detail}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterHistory(type) {
+  historyFilter = type;
+  renderHistory();
+}
+
+// ═══════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════
+function sortBy(field) {
+  if (sortField===field) sortDir*=-1; else { sortField=field; sortDir=field==='name'?1:-1; }
+  renderTable();
+}
+
+function updateStatus(id, newKey) {
+  const p = prospects.find(p=>p.id===id);
+  if (p) {
+    const oldKey = p.statusKey;
+    const oldCfg = getStatusConfig()[oldKey];
+    const newCfg = getStatusConfig()[newKey];
+    const type = getSSort(newKey) > getSSort(oldKey) ? 'upgrade' : 'downgrade';
+    const oldEV = getEV(p);
+    p.statusKey = newKey;
+    const overrideNote = hasManualProba(p) ? ` <span style="color:var(--cyan);font-size:10px">· manual proba kept (${(p.manualProba*100).toFixed(0)}%)</span>` : '';
+    const newEV = getEV(p);
+    logEvent(type, p.name,
+      `Stage ${type === 'upgrade' ? 'upgraded' : 'downgraded'}: <span class="history-badge badge-from">${oldKey.replace('a','*')} ${oldCfg.label}</span> → <span class="history-badge badge-to">${newKey.replace('a','*')} ${newCfg.label}</span> · EV $${oldEV.toFixed(0)}m → $${newEV.toFixed(0)}m${overrideNote}`
+    );
+    renderAll();
+  }
+}
+
+function updateProspectProba(id, val) {
+  const p = prospects.find(p => p.id === id);
+  if (!p) return;
+  const stageDefault = getProba(p.statusKey);
+  const oldEff = getProspectProba(p);
+  let newProba = Math.max(0, Math.min(100, parseFloat(val) || 0)) / 100;
+  // If user manually types exactly the stage default, clear the override
+  if (Math.abs(newProba - stageDefault) < 0.005) {
+    if (hasManualProba(p)) {
+      delete p.manualProba;
+      logEvent('proba', p.name, `Manual proba cleared — back to stage default <span class="history-badge badge-to">${(stageDefault*100).toFixed(0)}%</span>`);
+      renderAll();
+    }
+    return;
+  }
+  if (Math.abs(newProba - oldEff) < 0.005 && hasManualProba(p)) return;
+  p.manualProba = newProba;
+  const oldEV = p.estimate * oldEff;
+  const newEV = p.estimate * newProba;
+  const evDelta = newEV - oldEV;
+  logEvent('proba', p.name, `Manual proba set: <span class="history-badge badge-from">${(oldEff*100).toFixed(0)}%</span> → <span class="history-badge badge-to">${(newProba*100).toFixed(0)}%</span> · EV impact: ${evDelta>=0?'+':''}$${evDelta.toFixed(1)}m`);
+  renderAll();
+}
+
+function resetProspectProba(id) {
+  const p = prospects.find(p => p.id === id);
+  if (!p || !hasManualProba(p)) return;
+  const oldProba = p.manualProba;
+  const stageDefault = getProba(p.statusKey);
+  delete p.manualProba;
+  logEvent('proba', p.name, `Manual proba reset: <span class="history-badge badge-from">${(oldProba*100).toFixed(0)}%</span> → stage default <span class="history-badge badge-to">${(stageDefault*100).toFixed(0)}%</span>`);
+  renderAll();
+}
+
+function updateEstimate(id, val) {
+  const p = prospects.find(p=>p.id===id);
+  if (p) {
+    const oldVal = p.estimate;
+    const newVal = Math.max(0, parseFloat(val)||0);
+    if (oldVal !== newVal) {
+      logEvent('edit', p.name, `Estimate changed: <span class="history-badge badge-from">$${oldVal}m</span> → <span class="history-badge badge-to">$${newVal}m</span> · EV impact: ${((newVal-oldVal)*getProba(p.statusKey)>0?'+':'')}$${((newVal-oldVal)*getProba(p.statusKey)).toFixed(1)}m`);
+      p.estimate = newVal;
+      renderAll();
+    }
+  }
+}
+
+function deleteProspect(id) {
+  const p = prospects.find(p=>p.id===id);
+  if (p) {
+    logEvent('delete', p.name, `<span class="history-badge badge-del">Removed</span> — was ${p.statusKey.replace('a','*')} – ${getStatusConfig()[p.statusKey].label}, $${p.estimate}m pipeline, EV $${getEV(p).toFixed(1)}m`);
+    prospects = prospects.filter(p=>p.id!==id);
+    renderAll();
+  }
+}
+
+function openModal() { document.getElementById('modal').classList.add('active'); document.getElementById('newName').focus(); }
+function closeModal() { document.getElementById('modal').classList.remove('active'); }
+
+function addProspect() {
+  const name = document.getElementById('newName').value.trim().toUpperCase();
+  const estimate = parseFloat(document.getElementById('newEstimate').value)||0;
+  const statusKey = document.getElementById('newStatus').value;
+  const geo = document.getElementById('newGeo').value;
+  if (!name) return;
+  prospects.push({ id:nextId++, name, statusKey, estimate, geo });
+  const cfg = getStatusConfig()[statusKey];
+  logEvent('new', name, `<span class="history-badge badge-new">New prospect</span> — ${statusKey.replace('a','*')} – ${cfg.label}, $${estimate}m, ${geo}, EV $${(estimate*cfg.proba).toFixed(1)}m`);
+  closeModal();
+  document.getElementById('newName').value='';
+  document.getElementById('newEstimate').value='';
+  renderAll();
+}
+
+// ═══════════════════════════════════════════
+// IMPORT CSV — overwrite all prospects
+// ═══════════════════════════════════════════
+function handleImportFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = parseCSV(e.target.result);
+      if (!parsed.length) { alert('Empty or unreadable CSV.'); return; }
+      const msg = `Import ${parsed.length} prospect${parsed.length>1?'s':''} from ${file.name}?\n\n⚠️ This will OVERWRITE the current pipeline (${prospects.length} prospects).\nHistory and probability settings are preserved.`;
+      if (!confirm(msg)) return;
+      const oldCount = prospects.length;
+      const oldPipe = prospects.reduce((s,p)=>s+p.estimate,0);
+      prospects = parsed.map((row, i) => ({ id: i+1, ...row }));
+      nextId = prospects.length + 1;
+      const newPipe = prospects.reduce((s,p)=>s+p.estimate,0);
+      logEvent('new', 'IMPORT', `<span class="history-badge badge-new">Pipeline imported</span> from <em>${file.name}</em> — ${oldCount} → ${prospects.length} prospects, $${oldPipe.toLocaleString()}m → $${newPipe.toLocaleString()}m`);
+      renderAll();
+      renderHistory();
+    } catch (err) {
+      alert('Import failed: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function parseCSV(text) {
+  // Parse a single CSV line respecting quoted fields and escaped quotes
+  function parseLine(line) {
+    const out = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (inQ) {
+        if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
+        else if (c === '"') { inQ = false; }
+        else { cur += c; }
+      } else {
+        if (c === '"') inQ = true;
+        else if (c === ',') { out.push(cur); cur = ''; }
+        else { cur += c; }
+      }
+    }
+    out.push(cur);
+    return out.map(s => s.trim());
+  }
+
+  const lines = text.replace(/\r\n?/g, '\n').split('\n').filter(l => l.trim().length > 0);
+  if (lines.length < 2) return [];
+  const header = parseLine(lines[0]).map(h => h.toLowerCase());
+  const idx = {
+    name: header.findIndex(h => h.includes('name') || h.includes('prospect')),
+    estimate: header.findIndex(h => h.includes('estimate') || h.includes('pipeline') || h.includes('amount')),
+    stage: header.findIndex(h => h === 'stage' || h.startsWith('stage')),
+    geo: header.findIndex(h => h.includes('region') || h.includes('geo')),
+    manualProba: header.findIndex(h => h.includes('manual proba') || h.includes('manualproba') || h === 'override'),
+  };
+  if (idx.name < 0) throw new Error('No "Name" column found');
+  if (idx.stage < 0) throw new Error('No "Stage" column found');
+
+  const validStages = Object.keys(STATUS_LABELS);
+  const validGeos = ['Canada', 'Europe', 'US', 'Global'];
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = parseLine(lines[i]);
+    const name = (cells[idx.name] || '').trim().toUpperCase();
+    if (!name) continue;
+    const estimate = Math.max(0, parseFloat(cells[idx.estimate]) || 0);
+    let stage = (cells[idx.stage] || '').trim();
+    if (!validStages.includes(stage)) stage = '0';
+    let geo = idx.geo >= 0 ? (cells[idx.geo] || '').trim() : 'Global';
+    if (!validGeos.includes(geo)) geo = 'Global';
+    const row = { name, statusKey: stage, estimate, geo };
+    if (idx.manualProba >= 0) {
+      const raw = (cells[idx.manualProba] || '').trim().replace('%', '');
+      if (raw !== '') {
+        const mp = parseFloat(raw);
+        if (!isNaN(mp)) row.manualProba = Math.max(0, Math.min(100, mp)) / 100;
+      }
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+
+function exportCSV() {
+  const h = 'Name,Estimate ($m),Stage,Status,Region,Proba,Manual Proba,EV ($m)\n';
+  const r = prospects.map(p => {
+    const stageProba = (getProba(p.statusKey) * 100).toFixed(0);
+    const manual = hasManualProba(p) ? `${(p.manualProba * 100).toFixed(0)}%` : '';
+    return `"${p.name}",${p.estimate},"${p.statusKey}","${getStatusConfig()[p.statusKey].label}","${p.geo}",${stageProba}%,${manual},${getEV(p).toFixed(1)}`;
+  }).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([h+r],{type:'text/csv'}));
+  a.download = `BG_Pipeline_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+function exportHistory() {
+  const h = 'Timestamp,Type,Prospect,Detail\n';
+  const stripHtml = s => s.replace(/<[^>]*>/g, '');
+  const r = historyLog.map(e=>`"${e.time}","${e.type}","${e.prospect}","${stripHtml(e.detail)}"`).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([h+r],{type:'text/csv'}));
+  a.download = `BG_Pipeline_History_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+// ═══════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════
+function getStagesOrdered() {
+  return Object.entries(STATUS_LABELS).sort((a,b) => (a[1].sort||0) - (b[1].sort||0));
+}
+
+// ═══════════════════════════════════════════
+// STAGES MODAL — manage stages
+// ═══════════════════════════════════════════
+let stagesDraft = null; // [{key, origKey, label, sort, color, defaultProba, isNew}]
+
+function openStagesModal() {
+  stagesDraft = getStagesOrdered().map(([k, c]) => ({
+    key: k, origKey: k,
+    label: c.label,
+    sort: c.sort,
+    color: c.color || '#888',
+    defaultProba: (currentProbas[k] ?? ORIGINAL_PROBAS[k] ?? 0) * 100,
+    isNew: false,
+  }));
+  renderStagesEditor();
+  document.getElementById('stagesModal').classList.add('active');
+}
+
+function closeStagesModal() {
+  document.getElementById('stagesModal').classList.remove('active');
+  stagesDraft = null;
+}
+
+function renderStagesEditor() {
+  if (!stagesDraft) return;
+  stagesDraft.sort((a,b) => a.sort - b.sort);
+
+  const header = `
+    <div class="stage-edit-header">
+      <span></span>
+      <span>Key</span>
+      <span>Label</span>
+      <span style="text-align:right">Proba %</span>
+      <span style="text-align:center">Color</span>
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>`;
+
+  const rows = stagesDraft.map((s, i) => `
+    <div class="stage-edit-row ${s.isNew?'new-row':''}">
+      <span class="row-handle">${i+1}</span>
+      <input type="text" value="${s.key}" maxlength="6" onchange="updateDraftField(${i},'key',this.value)" title="Stage identifier (e.g. 0, 3a, c1)">
+      <input type="text" value="${s.label.replace(/"/g,'&quot;')}" onchange="updateDraftField(${i},'label',this.value)">
+      <input type="number" value="${s.defaultProba.toFixed(0)}" min="0" max="100" step="1" style="text-align:right" onchange="updateDraftField(${i},'defaultProba',this.value)">
+      <input type="color" value="${s.color}" onchange="updateDraftField(${i},'color',this.value)">
+      <button class="move-btn" onclick="moveDraftStage(${i},-1)" ${i===0?'disabled style="opacity:0.3"':''} title="Move up">▲</button>
+      <button class="move-btn" onclick="moveDraftStage(${i},1)" ${i===stagesDraft.length-1?'disabled style="opacity:0.3"':''} title="Move down">▼</button>
+      <button class="del-btn" onclick="deleteDraftStage(${i})" title="Delete stage">✕</button>
+    </div>
+  `).join('');
+
+  document.getElementById('stagesEditor').innerHTML = header + rows;
+}
+
+function updateDraftField(idx, field, value) {
+  if (!stagesDraft || !stagesDraft[idx]) return;
+  if (field === 'defaultProba') value = Math.max(0, Math.min(100, parseFloat(value) || 0));
+  else if (field === 'key') value = String(value).trim();
+  else value = String(value);
+  stagesDraft[idx][field] = value;
+}
+
+function moveDraftStage(idx, dir) {
+  const swap = idx + dir;
+  if (swap < 0 || swap >= stagesDraft.length) return;
+  const a = stagesDraft[idx].sort, b = stagesDraft[swap].sort;
+  stagesDraft[idx].sort = b; stagesDraft[swap].sort = a;
+  renderStagesEditor();
+}
+
+function addStageRow() {
+  let n = 1;
+  while (stagesDraft.some(s => s.key === `c${n}`)) n++;
+  const maxSort = Math.max(0, ...stagesDraft.map(s => s.sort));
+  stagesDraft.push({
+    key: `c${n}`, origKey: null,
+    label: 'New stage', sort: maxSort + 1,
+    color: '#60a5fa', defaultProba: 30, isNew: true,
+  });
+  renderStagesEditor();
+}
+
+function deleteDraftStage(idx) {
+  const s = stagesDraft[idx];
+  if (!s) return;
+  // Count prospects who would be impacted (using origKey, since unsaved key changes don't apply yet)
+  if (s.origKey) {
+    const impacted = prospects.filter(p => p.statusKey === s.origKey).length;
+    // Find next lower stage in draft (excluding self)
+    const lowerCandidates = stagesDraft.filter((x, i) => i !== idx && x.sort < s.sort);
+    if (impacted > 0 && lowerCandidates.length === 0) {
+      alert(`Cannot delete "${s.label}" — ${impacted} prospect(s) are in this stage and there is no lower stage to downgrade them to.`);
+      return;
+    }
+    if (impacted > 0) {
+      const target = lowerCandidates.sort((a,b) => b.sort - a.sort)[0];
+      if (!confirm(`Delete "${s.label}"? ${impacted} prospect(s) will be downgraded to "${target.label}".`)) return;
+    } else if (!confirm(`Delete "${s.label}"? (no prospects affected)`)) return;
+  }
+  stagesDraft.splice(idx, 1);
+  renderStagesEditor();
+}
+
+function resetStagesToDefault() {
+  if (!confirm('Reset stages to defaults? This will also restore default probabilities. Existing prospects with unknown stages will be moved to the closest match.')) return;
+  stagesDraft = Object.entries(ORIGINAL_STATUS_LABELS).map(([k, c]) => ({
+    key: k, origKey: STATUS_LABELS[k] ? k : null,
+    label: c.label, sort: c.sort, color: c.color,
+    defaultProba: ORIGINAL_PROBAS[k] * 100, isNew: !STATUS_LABELS[k],
+  }));
+  renderStagesEditor();
+}
+
+function saveStagesEditor() {
+  if (!stagesDraft) return;
+
+  // Validate
+  const keys = stagesDraft.map(s => s.key);
+  if (keys.some(k => !k)) { alert('All stages must have a non-empty key.'); return; }
+  if (new Set(keys).size !== keys.length) { alert('Stage keys must be unique.'); return; }
+  if (!stagesDraft.length) { alert('At least one stage is required.'); return; }
+
+  // Build mapping from origKey -> newKey for renames
+  const rename = {};
+  stagesDraft.forEach(s => { if (s.origKey && s.origKey !== s.key) rename[s.origKey] = s.key; });
+
+  // Stages that existed and were removed in draft
+  const removedKeys = Object.keys(STATUS_LABELS).filter(k => !stagesDraft.some(s => s.origKey === k));
+
+  // For removed stages: find downgrade target (next lower sort in NEW config)
+  const newConfigSorted = [...stagesDraft].sort((a,b) => a.sort - b.sort);
+  const downgradeMap = {};
+  for (const oldKey of removedKeys) {
+    const oldSort = STATUS_LABELS[oldKey].sort;
+    // candidates in NEW config (use origKey to identify "preexisting" stages)
+    const lower = newConfigSorted.filter(s => s.sort < oldSort);
+    if (lower.length) {
+      downgradeMap[oldKey] = lower[lower.length - 1].key;
+    } else {
+      // Fallback: lowest stage in new config
+      downgradeMap[oldKey] = newConfigSorted[0].key;
+    }
+  }
+
+  // Apply prospect migrations: rename + downgrade
+  let migratedCount = 0;
+  prospects.forEach(p => {
+    if (rename[p.statusKey]) { p.statusKey = rename[p.statusKey]; migratedCount++; }
+    else if (downgradeMap[p.statusKey]) { p.statusKey = downgradeMap[p.statusKey]; migratedCount++; }
+  });
+
+  // Build new STATUS_LABELS and currentProbas
+  const newStages = {};
+  const newProbas = {};
+  stagesDraft.forEach(s => {
+    newStages[s.key] = { label: s.label, sort: s.sort, color: s.color };
+    newProbas[s.key] = s.defaultProba / 100;
+  });
+
+  // Preserve user-adjusted currentProbas for stages that weren't reset:
+  // if a stage existed before AND the user didn't change its defaultProba in the modal,
+  // we still keep the value from the modal (since the modal showed the current proba).
+  // So newProbas is correct — it's already what the user sees.
+
+  STATUS_LABELS = newStages;
+  currentProbas = newProbas;
+  saveStages();
+  saveProbas();
+
+  // Log a single event summarizing the change
+  const renames = Object.entries(rename).map(([o,n]) => `${o}→${n}`).join(', ');
+  const removed = removedKeys.length ? `removed: ${removedKeys.join(', ')}` : '';
+  const added = stagesDraft.filter(s => s.isNew).map(s => s.key).join(', ');
+  const parts = [];
+  if (renames) parts.push(`renamed: ${renames}`);
+  if (removed) parts.push(removed);
+  if (added) parts.push(`added: ${added}`);
+  if (migratedCount) parts.push(`${migratedCount} prospect${migratedCount>1?'s':''} migrated`);
+  logEvent('edit', 'SYSTEM', `<span class="history-badge badge-new">Stages updated</span> ${parts.length?'· '+parts.join(' · '):'(no structural change)'}`);
+
+  closeStagesModal();
+  renderAll();
+}
+
+function refreshStageDropdowns() {
+  const ordered = getStagesOrdered();
+
+  const filterSel = document.getElementById('filterStage');
+  if (filterSel) {
+    const curVal = filterSel.value || 'all';
+    filterSel.innerHTML = `<option value="all">All Stages</option>` +
+      ordered.map(([k,c]) => `<option value="${k}">${k.replace('a','*')} – ${c.label}</option>`).join('');
+    if ([...filterSel.options].some(o => o.value === curVal)) filterSel.value = curVal;
+  }
+
+  const newSel = document.getElementById('newStatus');
+  if (newSel) {
+    const curVal = newSel.value;
+    newSel.innerHTML = ordered.map(([k,c]) => `<option value="${k}">${k.replace('a','*')} – ${c.label}</option>`).join('');
+    if (curVal && [...newSel.options].some(o => o.value === curVal)) newSel.value = curVal;
+    else { const def = ordered.find(([k]) => k === '2') || ordered[Math.floor(ordered.length/2)]; if (def) newSel.value = def[0]; }
+  }
+}
+
+function renderAll() { refreshStageDropdowns(); renderKPIs(); renderTable(); renderSidebar(); saveData(); }
+
+document.getElementById('modal').addEventListener('click', e => { if(e.target.id==='modal') closeModal(); });
+document.getElementById('stagesModal').addEventListener('click', e => { if(e.target.id==='stagesModal') closeStagesModal(); });
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') { closeModal(); closeStagesModal(); }
+  if (e.key==='Enter' && document.getElementById('modal').classList.contains('active')) addProspect();
+});
+
+renderAll();
+</script>
+</body>
+</html>
