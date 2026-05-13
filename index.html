@@ -1847,25 +1847,113 @@ function handleImportFile(event) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
+    const text = e.target.result;
+    const firstLine = (text.split('\n')[0] || '').toLowerCase();
+    const isHistory = firstLine.includes('timestamp') && firstLine.includes('prospect') && firstLine.includes('detail');
     try {
-      const parsed = parseCSV(e.target.result);
-      if (!parsed.length) { alert('Empty or unreadable CSV.'); return; }
-      const msg = `Import ${parsed.length} prospect${parsed.length>1?'s':''} from ${file.name}?\n\n⚠️ This will OVERWRITE the current pipeline (${prospects.length} prospects).\nHistory and probability settings are preserved.`;
-      if (!confirm(msg)) return;
-      const oldCount = prospects.length;
-      const oldPipe = prospects.reduce((s,p)=>s+p.estimate,0);
-      prospects = parsed.map((row, i) => ({ id: i+1, ...row }));
-      nextId = prospects.length + 1;
-      const newPipe = prospects.reduce((s,p)=>s+p.estimate,0);
-      logEvent('new', 'IMPORT', `<span class="history-badge badge-new">Pipeline imported</span> from <em>${file.name}</em> — ${oldCount} → ${prospects.length} prospects, $${oldPipe.toLocaleString()}m → $${newPipe.toLocaleString()}m`);
-      renderAll();
-      renderHistory();
+      if (isHistory) importHistoryFromCSV(text, file.name);
+      else importPipelineFromCSV(text, file.name);
     } catch (err) {
       alert('Import failed: ' + err.message);
     }
   };
   reader.readAsText(file);
   event.target.value = '';
+}
+
+function importPipelineFromCSV(text, fileName) {
+  const parsed = parseCSV(text);
+  if (!parsed.length) { alert('Empty or unreadable pipeline CSV.'); return; }
+  const msg = `Import ${parsed.length} prospect${parsed.length>1?'s':''} from ${fileName}?\n\n⚠️ This will OVERWRITE the current pipeline (${prospects.length} prospects).\nHistory and probability settings are preserved.`;
+  if (!confirm(msg)) return;
+  const oldCount = prospects.length;
+  const oldPipe = prospects.reduce((s,p)=>s+p.estimate,0);
+  prospects = parsed.map((row, i) => ({ id: i+1, ...row }));
+  nextId = prospects.length + 1;
+  const newPipe = prospects.reduce((s,p)=>s+p.estimate,0);
+  logEvent('new', 'IMPORT', `<span class="history-badge badge-new">Pipeline imported</span> from <em>${fileName}</em> — ${oldCount} → ${prospects.length} prospects, $${oldPipe.toLocaleString()}m → $${newPipe.toLocaleString()}m`);
+  renderAll();
+  renderHistory();
+}
+
+function importHistoryFromCSV(text, fileName) {
+  const events = parseHistoryCSV(text);
+  if (!events.length) { alert('No history rows found in CSV.'); return; }
+  const approx = events.filter(e => e._approxTs).length;
+  const approxNote = approx ? `\n\nNote: ${approx} entries had no exact timestamp and were placed using a year heuristic (current year, or previous year if the date would otherwise be in the future).` : '';
+  if (!confirm(`Import ${events.length} history entries from ${fileName}?\n\n⚠️ This will OVERWRITE current history (${historyLog.length} entries).${approxNote}`)) return;
+  historyLog = events.map(({_approxTs, ...e}) => e);
+  saveData();
+  renderAll();
+  renderHistory();
+}
+
+function parseHistoryCSV(text) {
+  function parseLine(line) {
+    const out = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (inQ) {
+        if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
+        else if (c === '"') { inQ = false; }
+        else { cur += c; }
+      } else {
+        if (c === '"') inQ = true;
+        else if (c === ',') { out.push(cur); cur = ''; }
+        else { cur += c; }
+      }
+    }
+    out.push(cur);
+    return out.map(s => s.trim());
+  }
+  const lines = text.replace(/\r\n?/g, '\n').split('\n').filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const header = parseLine(lines[0]).map(h => h.toLowerCase());
+  const idx = {
+    timestamp: header.findIndex(h => h.includes('timestamp') || h === 'time'),
+    epoch: header.findIndex(h => h.includes('epoch') || h === 'ts'),
+    type: header.findIndex(h => h === 'type'),
+    prospect: header.findIndex(h => h.includes('prospect')),
+    detail: header.findIndex(h => h.includes('detail')),
+  };
+  if (idx.type < 0 || idx.prospect < 0) throw new Error('Missing required columns (Type, Prospect)');
+  const rows = [];
+  const nowMs = Date.now();
+  for (let i = 1; i < lines.length; i++) {
+    const cells = parseLine(lines[i]);
+    const timeStr = cells[idx.timestamp] || '';
+    const type = (cells[idx.type] || '').trim();
+    const prospect = (cells[idx.prospect] || '').trim();
+    const detail = idx.detail >= 0 ? (cells[idx.detail] || '') : '';
+    if (!type || !prospect) continue;
+    let ts = NaN, approx = false;
+    if (idx.epoch >= 0) ts = parseInt(cells[idx.epoch], 10);
+    if (isNaN(ts) || !ts) { ts = parseHumanTimestamp(timeStr); approx = true; }
+    if (!ts) ts = nowMs;
+    rows.push({ type, prospect, detail, time: timeStr, ts, _approxTs: approx });
+  }
+  rows.sort((a,b) => (b.ts || 0) - (a.ts || 0));
+  return rows;
+}
+
+function parseHumanTimestamp(s) {
+  const m = (s || '').match(/^(\d{1,2})\s+(\w+),?\s+(\d{1,2}):(\d{2})/);
+  if (!m) return 0;
+  const day = parseInt(m[1], 10);
+  const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  const month = months[m[2].slice(0,3).toLowerCase()];
+  if (month === undefined) return 0;
+  const hour = parseInt(m[3], 10);
+  const minute = parseInt(m[4], 10);
+  const now = new Date();
+  let year = now.getFullYear();
+  let candidate = new Date(year, month, day, hour, minute).getTime();
+  if (candidate - now.getTime() > 24 * 60 * 60 * 1000) {
+    year -= 1;
+    candidate = new Date(year, month, day, hour, minute).getTime();
+  }
+  return candidate;
 }
 
 function parseCSV(text) {
@@ -1941,9 +2029,9 @@ function exportCSV() {
 }
 
 function exportHistory() {
-  const h = 'Timestamp,Type,Prospect,Detail\n';
+  const h = 'Timestamp,Epoch,Type,Prospect,Detail\n';
   const stripHtml = s => s.replace(/<[^>]*>/g, '');
-  const r = historyLog.map(e=>`"${e.time}","${e.type}","${e.prospect}","${stripHtml(e.detail)}"`).join('\n');
+  const r = historyLog.map(e=>`"${e.time}",${e.ts || ''},"${e.type}","${e.prospect}","${stripHtml(e.detail)}"`).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([h+r],{type:'text/csv'}));
   a.download = `BG_Pipeline_History_${new Date().toISOString().slice(0,10)}.csv`;
