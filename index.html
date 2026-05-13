@@ -109,7 +109,7 @@ body {
 .btn-sm { padding: 5px 10px; font-size: 11px; }
 
 /* ─── LAYOUT ─── */
-.main-content { padding: 24px 36px; max-width: 1500px; margin: 0 auto; }
+.main-content { padding: 22px 28px; max-width: 1800px; margin: 0 auto; }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 
@@ -151,7 +151,7 @@ body {
 .kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
 
 /* ─── PANELS ─── */
-.panels { display: grid; grid-template-columns: 1fr 320px; gap: 18px; }
+.panels { display: grid; grid-template-columns: 1fr 280px; gap: 18px; }
 .panel {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -188,7 +188,7 @@ body {
 }
 
 /* ─── TABLE ─── */
-.table-wrapper { max-height: calc(100vh - 380px); overflow-y: auto; }
+.table-wrapper { max-height: calc(100vh - 380px); overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .table-wrapper::-webkit-scrollbar { width: 5px; }
 .table-wrapper::-webkit-scrollbar-track { background: transparent; }
 .table-wrapper::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -679,15 +679,80 @@ body {
 }
 
 /* ─── RESPONSIVE ─── */
+/* Tablet / iPad mini portrait (~768px) and laptops */
 @media (max-width: 1100px) {
   .panels { grid-template-columns: 1fr; }
   .kpi-grid { grid-template-columns: repeat(3, 1fr); }
-  .main-content { padding: 18px; }
-  .app-header { padding: 14px 18px; }
-  .tab-bar { padding: 0 18px; }
-  .closings-grid { grid-template-columns: 1fr; }
+  .main-content { padding: 16px 14px; }
+  .app-header { padding: 12px 14px; }
+  .tab-bar { padding: 0 14px; }
+  .closings-grid { grid-template-columns: repeat(2, 1fr); }
+  .monitor-grid { grid-template-columns: 1fr; }
 }
-@media (max-width: 640px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* Larger phones / iPad mini portrait edge */
+@media (max-width: 820px) {
+  .kpi-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .kpi-value { font-size: 22px; }
+  .kpi-card { padding: 14px; }
+  .pipeline-table thead th { padding: 8px 10px; font-size: 9px; }
+  .pipeline-table tbody td { padding: 7px 10px; font-size: 11px; }
+  .status-select { min-width: 130px; font-size: 10px; }
+  .toolbar { padding: 8px 12px; gap: 6px; }
+  .toolbar .search-box { min-width: 120px; }
+  .panel-header { padding: 12px 14px; }
+  .sidebar-section { padding: 12px 14px; }
+}
+
+/* Phone (iPhone 16 Pro Max ~430px portrait, and smaller) */
+@media (max-width: 640px) {
+  .main-content { padding: 12px 8px; }
+  .app-header { padding: 10px 12px; flex-wrap: wrap; gap: 8px; }
+  .logo-text { font-size: 14px; }
+  .logo-text span { display: none; }
+  .header-actions { flex-wrap: wrap; gap: 6px; width: 100%; justify-content: flex-end; }
+  .btn { font-size: 11px; padding: 6px 10px; }
+  .btn-sm { padding: 4px 8px; font-size: 10px; }
+  .tab-bar { padding: 0 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tab { padding: 10px 14px; font-size: 12px; white-space: nowrap; }
+
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
+  .kpi-card { padding: 12px; }
+  .kpi-value { font-size: 18px; }
+  .kpi-label { font-size: 9px; }
+  .kpi-sub { font-size: 10px; }
+
+  .closings-grid { grid-template-columns: 1fr; }
+  .closing-card { padding: 16px; }
+  .closing-value { font-size: 24px; }
+
+  .toolbar { padding: 8px 10px; gap: 6px; flex-direction: column; align-items: stretch; }
+  .toolbar .search-box, .toolbar .filter-select { width: 100%; }
+
+  /* Table: horizontal scroll, slightly smaller cells */
+  .table-wrapper { max-height: calc(100vh - 320px); }
+  .pipeline-table thead th { padding: 7px 8px; font-size: 9px; }
+  .pipeline-table tbody td { padding: 6px 8px; font-size: 11px; }
+  .status-select { min-width: 120px; }
+  .edit-estimate { width: 56px; }
+
+  /* Funnel: stack label above bar on phone */
+  .funnel-stage { flex-wrap: wrap; }
+  .funnel-label { width: 100%; text-align: left; }
+  .funnel-bar-wrap { width: 100%; }
+  .funnel-meta { width: 100%; }
+  .funnel-container { padding: 18px 14px; }
+
+  /* Velocity, Likelihood: 2-up KPI grids stay 2-up; tables become scrollable */
+  .likelihood-row, .likelihood-header { grid-template-columns: 1.6fr 0.8fr 0.6fr 0.6fr 0.9fr 0.7fr 0.4fr 0.5fr; gap: 6px; padding: 8px 10px; font-size: 11px; }
+
+  /* Modals fill the viewport */
+  .modal { width: 92vw; padding: 18px; }
+
+  /* History timeline padding */
+  .history-container { padding: 14px; }
+  .history-time { width: 90px; font-size: 10px; }
+}
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(6px); }
