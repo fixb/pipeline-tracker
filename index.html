@@ -669,10 +669,9 @@ body {
     <div class="logo-text">Pipeline Tracker <span><span id="saveStatus" style="color:var(--green)">● saved locally</span></span></div>
   </div>
   <div class="header-actions">
-    <input type="file" id="importFileInput" accept=".csv,text/csv" style="display:none" onchange="handleImportFile(event)">
+    <input type="file" id="importFileInput" accept=".csv,.json,text/csv,application/json" style="display:none" onchange="handleImportFile(event)">
     <button class="btn" onclick="document.getElementById('importFileInput').click()">↑ Import</button>
-    <button class="btn" onclick="exportHistory()">↓ History</button>
-    <button class="btn" onclick="exportCSV()">↓ CSV</button>
+    <button class="btn" onclick="exportBackup()">↓ Backup</button>
     <button class="btn" onclick="openStagesModal()">⚙ Stages</button>
     <button class="btn" onclick="resetAllData()" style="color:var(--red);border-color:rgba(239,68,68,0.3)">↺ Reset</button>
     <button class="btn btn-primary" onclick="openModal()">+ Prospect</button>
@@ -1848,17 +1847,60 @@ function handleImportFile(event) {
   const reader = new FileReader();
   reader.onload = e => {
     const text = e.target.result;
-    const firstLine = (text.split('\n')[0] || '').toLowerCase();
-    const isHistory = firstLine.includes('timestamp') && firstLine.includes('prospect') && firstLine.includes('detail');
+    const looksJSON = file.name.toLowerCase().endsWith('.json') || text.trim().startsWith('{');
     try {
-      if (isHistory) importHistoryFromCSV(text, file.name);
-      else importPipelineFromCSV(text, file.name);
+      if (looksJSON) {
+        importBackupFromJSON(text, file.name);
+      } else {
+        const firstLine = (text.split('\n')[0] || '').toLowerCase();
+        const isHistory = firstLine.includes('timestamp') && firstLine.includes('prospect') && firstLine.includes('detail');
+        if (isHistory) importHistoryFromCSV(text, file.name);
+        else importPipelineFromCSV(text, file.name);
+      }
     } catch (err) {
       alert('Import failed: ' + err.message);
     }
   };
   reader.readAsText(file);
   event.target.value = '';
+}
+
+function importBackupFromJSON(text, fileName) {
+  let data;
+  try { data = JSON.parse(text); } catch(e) { throw new Error('Invalid JSON: ' + e.message); }
+  if (!data || typeof data !== 'object') throw new Error('Not a backup file');
+
+  const summary = [];
+  if (Array.isArray(data.prospects)) summary.push(`${data.prospects.length} prospects`);
+  if (Array.isArray(data.historyLog)) summary.push(`${data.historyLog.length} history entries`);
+  if (data.stages) summary.push(`${Object.keys(data.stages).length} stages`);
+  if (data.currentProbas) summary.push('probabilities');
+  if (Array.isArray(data.probaSnapshots)) summary.push(`${data.probaSnapshots.length} proba snapshots`);
+  if (!summary.length) throw new Error('Backup file contains no recognized data');
+
+  const msg = `Restore from ${fileName}?\n\nContents: ${summary.join(', ')}.\n\n⚠️ This will OVERWRITE everything currently stored in this browser.`;
+  if (!confirm(msg)) return;
+
+  if (Array.isArray(data.prospects)) prospects = data.prospects;
+  if (Array.isArray(data.historyLog)) historyLog = data.historyLog;
+  if (data.currentProbas && typeof data.currentProbas === 'object') currentProbas = data.currentProbas;
+  if (Array.isArray(data.probaSnapshots)) probaSnapshots = data.probaSnapshots;
+  if (data.stages && typeof data.stages === 'object' && Object.keys(data.stages).length > 0) {
+    STATUS_LABELS = data.stages;
+    saveStages();
+  }
+  if (typeof data.nextId === 'number') nextId = data.nextId;
+  else nextId = (prospects.reduce((m,p) => Math.max(m, p.id || 0), 0)) + 1;
+
+  // Defensive: reconcile prospects with stages
+  const validKeys = new Set(Object.keys(STATUS_LABELS));
+  const fallback = Object.entries(STATUS_LABELS).sort((a,b) => (a[1].sort||0) - (b[1].sort||0))[0][0];
+  prospects.forEach(p => { if (!validKeys.has(p.statusKey)) p.statusKey = fallback; });
+
+  saveData();
+  saveProbas();
+  renderAll();
+  renderHistory();
 }
 
 function importPipelineFromCSV(text, fileName) {
@@ -2015,26 +2057,20 @@ function parseCSV(text) {
   return rows;
 }
 
-function exportCSV() {
-  const h = 'Name,Estimate ($m),Stage,Status,Region,Proba,Manual Proba,EV ($m)\n';
-  const r = prospects.map(p => {
-    const stageProba = (getProba(p.statusKey) * 100).toFixed(0);
-    const manual = hasManualProba(p) ? `${(p.manualProba * 100).toFixed(0)}%` : '';
-    return `"${p.name}",${p.estimate},"${p.statusKey}","${getStatusConfig()[p.statusKey].label}","${p.geo}",${stageProba}%,${manual},${getEV(p).toFixed(1)}`;
-  }).join('\n');
+function exportBackup() {
+  const backup = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    prospects,
+    historyLog,
+    currentProbas,
+    probaSnapshots,
+    stages: STATUS_LABELS,
+    nextId,
+  };
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([h+r],{type:'text/csv'}));
-  a.download = `BG_Pipeline_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
-}
-
-function exportHistory() {
-  const h = 'Timestamp,Epoch,Type,Prospect,Detail\n';
-  const stripHtml = s => s.replace(/<[^>]*>/g, '');
-  const r = historyLog.map(e=>`"${e.time}",${e.ts || ''},"${e.type}","${e.prospect}","${stripHtml(e.detail)}"`).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([h+r],{type:'text/csv'}));
-  a.download = `BG_Pipeline_History_${new Date().toISOString().slice(0,10)}.csv`;
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
+  a.download = `pipeline_backup_${new Date().toISOString().slice(0,10)}.json`;
   a.click();
 }
 
