@@ -1672,6 +1672,54 @@ function renderClosings() {
     }
   }
 
+  // ─── Management Summary ───
+  const k = computeKPIs();
+  const cutoff30 = Date.now() - 30 * 86400000;
+  const upgrades30 = historyLog.filter(h => h.type === 'upgrade' && h.ts > cutoff30);
+  const downgrades30 = historyLog.filter(h => h.type === 'downgrade' && h.ts > cutoff30);
+  const vel = buildVelocityStats();
+  const stuckList = [];
+  for (const [stage, arr] of Object.entries(vel.current)) {
+    const compArr = vel.completed[stage] || [];
+    if (!compArr.length) continue;
+    const avgComp = compArr.reduce((a,b)=>a+b,0) / compArr.length;
+    for (const c of arr) if (c.durationMs > avgComp * 1.5) stuckList.push({ ...c, stage });
+  }
+  stuckList.sort((a,b) => b.durationMs - a.durationMs);
+  const top3ev = topDeals.slice(0,3).reduce((s,p)=>s+getEV(p),0);
+  const concentration = k.totalEV > 0 ? Math.round(top3ev / k.totalEV * 100) : 0;
+  const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+
+  let summary = `SYNTHÈSE PIPELINE — ${today}\n\n`;
+  summary += `Headline\n`;
+  summary += `• Pipeline total : $${k.totalPipeline.toLocaleString()}m sur ${k.count} prospects\n`;
+  summary += `• Expected Value (proba-pondéré) : $${Math.round(k.totalEV).toLocaleString()}m\n`;
+  summary += `• Taux de conversion implicite : ${k.conv.toFixed(1)}%\n\n`;
+  summary += `Scénarios\n`;
+  summary += `• Optimiste (proba ×1.5) : $${Math.round(optimistic).toLocaleString()}m\n`;
+  summary += `• Base case : $${Math.round(k.totalEV).toLocaleString()}m\n`;
+  summary += `• Stress (proba ×0.35) : $${Math.round(pessimistic).toLocaleString()}m\n\n`;
+  summary += `Stade avancé (Stage 3+)\n`;
+  summary += `• ${stage3plus.length} prospects · $${stage3plus.reduce((s,p)=>s+p.estimate,0).toLocaleString()}m de pipeline · EV $${Math.round(stage3plusEV)}m\n\n`;
+  summary += `Top 5 deals par EV\n`;
+  topDeals.slice(0,5).forEach((p, i) => {
+    const lbl = STATUS_LABELS[p.statusKey]?.label || '?';
+    summary += `${i+1}. ${p.name} — $${p.estimate}m, ${p.statusKey.replace('a','*')} ${lbl}, EV $${getEV(p).toFixed(0)}m\n`;
+  });
+  summary += `\nMomentum (30 derniers jours)\n`;
+  summary += `• ${upgrades30.length} upgrade${upgrades30.length>1?'s':''}, ${downgrades30.length} downgrade${downgrades30.length>1?'s':''}\n`;
+  if (activityRows.length) {
+    const recentActivity = activityRows.filter(r => r.ts > cutoff30).length;
+    summary += `• ${recentActivity} interactions cumulées\n`;
+  }
+  summary += `\nPoints d'attention\n`;
+  summary += `• Concentration : top 3 deals = ${concentration}% de l'EV total\n`;
+  if (stuckList.length) {
+    const top = stuckList[0];
+    const days = Math.round(top.durationMs / 86400000);
+    summary += `• ${stuckList.length} prospect${stuckList.length>1?'s':''} bloqué${stuckList.length>1?'s':''} en stage (> 1.5× durée moyenne), dont ${top.name} (stage ${top.stage.replace('a','*')} depuis ${days}j)\n`;
+  }
+
   const circumference = Math.PI * 2 * 18;
 
   let html = `
@@ -1696,6 +1744,17 @@ function renderClosings() {
         <div class="closing-value" style="color:var(--red)">$${Math.round(pessimistic).toLocaleString()}m</div>
         <div class="closing-desc">Proba ×0.35 — stress scenario</div>
       </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:18px">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Synthèse Management</div>
+          <div class="panel-subtitle">copy-paste pour ton recap hebdo</div>
+        </div>
+        <button class="btn btn-sm" onclick="copyManagementSummary()" id="copySummaryBtn">⧉ Copy</button>
+      </div>
+      <pre id="managementSummaryText" style="padding:18px 22px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;white-space:pre-wrap;margin:0;color:var(--text-secondary);max-height:420px;overflow-y:auto">${summary}</pre>
     </div>
 
     <div class="motivation-banner">
@@ -1739,6 +1798,29 @@ function renderClosings() {
     </div>`;
 
   document.getElementById('closingsContent').innerHTML = html;
+}
+
+function copyManagementSummary() {
+  const el = document.getElementById('managementSummaryText');
+  const btn = document.getElementById('copySummaryBtn');
+  if (!el) return;
+  const text = el.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    if (btn) {
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copied';
+      btn.style.color = 'var(--green)';
+      setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1500);
+    }
+  }).catch(() => {
+    // Fallback: select the text so the user can Cmd+C
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    alert('Auto-copy blocked — text is selected, press Cmd+C / Ctrl+C.');
+  });
 }
 
 // ═══════════════════════════════════════════
