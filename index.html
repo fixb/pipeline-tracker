@@ -215,17 +215,95 @@ body {
 .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
 .status-select {
-  padding: 3px 6px; border-radius: 5px; border: 1px solid var(--border);
-  background: var(--bg-input); color: var(--text-primary);
-  font-family: 'DM Sans', sans-serif; font-size: 11px; cursor: pointer;
-  outline: none; min-width: 155px;
+  padding: 3px 9px; border-radius: 999px;
+  font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 500;
+  cursor: pointer; outline: none; min-width: 155px;
+  border: 1px solid currentColor;
+  background: var(--bg-input);
+  -webkit-appearance: none; appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 10px) 50%;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  padding-right: 22px;
+  transition: background-color 0.15s;
 }
+.status-select option { background: var(--bg-card); color: var(--text-primary); }
+.status-select:hover { filter: brightness(1.15); }
+.status-select:focus { box-shadow: 0 0 0 2px var(--accent-glow); }
 .geo-tag { font-size: 10px; color: var(--text-muted); background: rgba(255,255,255,0.03); padding: 2px 7px; border-radius: 3px; }
 
-.ev-bar-container { display: flex; align-items: center; gap: 6px; }
-.ev-bar { flex: 1; height: 5px; background: rgba(255,255,255,0.03); border-radius: 3px; overflow: hidden; min-width: 50px; }
-.ev-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
-.ev-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; min-width: 44px; text-align: right; }
+.ev-bar-container { display: flex; align-items: center; gap: 8px; }
+.ev-bar { flex: 1; height: 7px; background: rgba(255,255,255,0.04); border-radius: 4px; overflow: hidden; min-width: 60px; }
+.ev-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; box-shadow: 0 0 8px rgba(255,255,255,0.04); }
+.ev-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; min-width: 48px; text-align: right; }
+
+/* Top 3 EV accent */
+.pipeline-table tbody tr.top-ev .prospect-name {
+  position: relative; padding-left: 22px;
+}
+.pipeline-table tbody tr.top-ev .prospect-name::before {
+  content: '★'; position: absolute; left: 6px; top: 50%; transform: translateY(-50%);
+  color: var(--gold); font-size: 11px;
+}
+
+/* Inline upgrade/downgrade buttons */
+.row-actions { display: inline-flex; gap: 2px; opacity: 0; transition: opacity 0.12s; margin-right: 4px; }
+.pipeline-table tbody tr:hover .row-actions { opacity: 1; }
+.row-action-btn {
+  background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--text-secondary); cursor: pointer;
+  width: 20px; height: 20px; border-radius: 4px; font-size: 11px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0;
+}
+.row-action-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+.row-action-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* Compact mode */
+.pipeline-table.compact thead th { padding: 6px 10px; font-size: 9px; }
+.pipeline-table.compact tbody td { padding: 4px 10px; font-size: 11px; }
+.pipeline-table.compact .edit-estimate { padding: 1px 4px; font-size: 11px; width: 56px; }
+.pipeline-table.compact .status-select { padding: 2px 7px; padding-right: 20px; font-size: 10px; min-width: 130px; }
+.pipeline-table.compact .ev-bar { height: 5px; }
+.pipeline-table.compact .proba-cell-input { font-size: 11px; }
+
+/* Group headers (group-by-stage view) */
+.group-header td {
+  padding: 10px 14px !important;
+  background: rgba(255,255,255,0.025);
+  border-top: 1px solid var(--border) !important;
+  border-bottom: 1px solid var(--border) !important;
+  cursor: pointer;
+  user-select: none;
+}
+.group-header:hover td { background: rgba(255,255,255,0.04); }
+.group-header-row { display: flex; align-items: center; gap: 14px; }
+.group-arrow { font-size: 10px; color: var(--text-muted); width: 12px; }
+.group-label { font-size: 12px; font-weight: 700; flex: 1; }
+.group-count { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
+.group-pipe, .group-ev { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; }
+.group-ev { color: var(--green); }
+
+/* Pipeline view toggle buttons */
+.view-toggle {
+  display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+}
+.view-toggle button {
+  background: var(--bg-input); color: var(--text-secondary); border: none;
+  padding: 5px 10px; font-size: 11px; cursor: pointer;
+  border-right: 1px solid var(--border);
+  font-family: 'DM Sans', sans-serif;
+}
+.view-toggle button:last-child { border-right: none; }
+.view-toggle button.active { background: var(--accent); color: white; }
+.view-toggle button:hover:not(.active) { color: var(--text-primary); }
+
+/* Filter summary */
+.filter-summary { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 11px; }
+.filter-summary .fs-sep { color: var(--text-muted); opacity: 0.4; }
+.filter-summary .fs-val { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text-primary); }
+.filter-summary .fs-active { color: var(--cyan); font-weight: 600; }
 
 .edit-estimate {
   background: transparent; border: 1px solid transparent;
@@ -813,6 +891,14 @@ body {
             <option value="US">US</option>
             <option value="Global">Global</option>
           </select>
+          <div class="view-toggle" title="View mode">
+            <button id="viewModeFlat" onclick="setViewMode('flat')">Flat</button>
+            <button id="viewModeGrouped" onclick="setViewMode('grouped')">Grouped</button>
+          </div>
+          <div class="view-toggle" title="Density">
+            <button id="densityComfy" onclick="setCompactMode(false)">Comfortable</button>
+            <button id="densityCompact" onclick="setCompactMode(true)">Compact</button>
+          </div>
         </div>
         <div class="table-wrapper">
           <table class="pipeline-table">
@@ -823,6 +909,14 @@ body {
       </div>
       <div class="panel" style="height:fit-content">
         <div class="panel-header"><div class="panel-title">Analytics</div></div>
+        <div class="sidebar-section" id="topMoversSection" style="display:none">
+          <h3>Top Movers · 7d</h3>
+          <div id="topMovers"></div>
+        </div>
+        <div class="sidebar-section" id="toReEngageSection" style="display:none">
+          <h3>To Re-engage</h3>
+          <div id="toReEngage"></div>
+        </div>
         <div class="sidebar-section">
           <h3>Probability Matrix</h3>
           <div id="probaMatrix"></div>
@@ -953,6 +1047,16 @@ const STORAGE_KEY_PROBAS = 'bgf_pipeline_probas';
 const STORAGE_KEY_PROBA_HISTORY = 'bgf_pipeline_proba_history';
 const STORAGE_KEY_STAGES = 'bgf_pipeline_stages';
 const STORAGE_KEY_ACTIVITY = 'bgf_pipeline_activity';
+const STORAGE_KEY_PREFS = 'bgf_pipeline_prefs';
+
+function loadPrefs() {
+  try { const s = localStorage.getItem(STORAGE_KEY_PREFS); if (s) return { viewMode:'flat', compactMode:false, groupCollapsed:{}, ...JSON.parse(s) }; } catch(e) {}
+  return { viewMode: 'flat', compactMode: false, groupCollapsed: {} };
+}
+function savePrefs() {
+  try { localStorage.setItem(STORAGE_KEY_PREFS, JSON.stringify(prefs)); } catch(e) {}
+}
+let prefs = loadPrefs();
 
 const ORIGINAL_PROBAS = {
   "1": 0.10, "2": 0.25, "3": 0.50, "4": 0.75, "5": 1.00
@@ -1260,6 +1364,38 @@ function renderKPIs() {
 // ═══════════════════════════════════════════
 // TABLE
 // ═══════════════════════════════════════════
+function setViewMode(mode) {
+  prefs.viewMode = mode;
+  savePrefs();
+  renderTable();
+}
+function setCompactMode(v) {
+  prefs.compactMode = v;
+  savePrefs();
+  renderTable();
+}
+function toggleGroup(key) {
+  prefs.groupCollapsed[key] = !prefs.groupCollapsed[key];
+  savePrefs();
+  renderTable();
+}
+function upgradeProspect(id) {
+  const p = prospects.find(p => p.id === id);
+  if (!p) return;
+  const ordered = getStagesOrdered().map(([k]) => k);
+  const idx = ordered.indexOf(p.statusKey);
+  if (idx < 0 || idx >= ordered.length - 1) return;
+  updateStatus(id, ordered[idx + 1]);
+}
+function downgradeProspect(id) {
+  const p = prospects.find(p => p.id === id);
+  if (!p) return;
+  const ordered = getStagesOrdered().map(([k]) => k);
+  const idx = ordered.indexOf(p.statusKey);
+  if (idx <= 0) return;
+  updateStatus(id, ordered[idx - 1]);
+}
+
 function detectActivityFlag(p, agg) {
   const a = agg[p.name.toUpperCase()];
   const sort = getSSort(p.statusKey);
@@ -1279,6 +1415,9 @@ function renderTable() {
   const gf = document.getElementById('filterGeo').value;
   const agg = getActivityAgg();
   const hasActivity = activityRows.length > 0;
+  const SC = getStatusConfig();
+  const orderedStages = getStagesOrdered();
+
   let filtered = prospects.filter(p => {
     if (search && !p.name.toLowerCase().includes(search)) return false;
     if (sf !== 'all' && p.statusKey !== sf) return false;
@@ -1302,10 +1441,42 @@ function renderTable() {
     else { va=a[sortField]; vb=b[sortField]; }
     return typeof va==='string' ? sortDir*va.localeCompare(vb) : sortDir*(va-vb);
   });
+
   const maxEV = Math.max(...prospects.map(p=>getEV(p)),1);
   const tF = filtered.reduce((s,p)=>s+p.estimate,0);
   const eF = filtered.reduce((s,p)=>s+getEV(p),0);
-  document.getElementById('prospectCount').textContent = `${filtered.length} of ${prospects.length}`;
+  const convF = tF > 0 ? (eF/tF*100).toFixed(1) : '0.0';
+  const isFiltered = filtered.length !== prospects.length;
+  document.getElementById('prospectCount').innerHTML = `
+    <div class="filter-summary">
+      ${isFiltered
+        ? `<span class="fs-active">${filtered.length} of ${prospects.length}</span>`
+        : `<span>${prospects.length} prospects</span>`}
+      <span class="fs-sep">·</span>
+      <span class="fs-val">$${tF.toLocaleString()}m</span>
+      <span style="color:var(--text-muted)">pipeline</span>
+      <span class="fs-sep">→</span>
+      <span class="fs-val" style="color:var(--green)">$${Math.round(eF).toLocaleString()}m</span>
+      <span style="color:var(--text-muted)">EV</span>
+      <span class="fs-sep">·</span>
+      <span class="fs-val" style="color:var(--amber)">${convF}%</span>
+      <span style="color:var(--text-muted)">conv</span>
+    </div>`;
+
+  // View mode toggles state
+  const tbl = document.querySelector('.pipeline-table');
+  if (tbl) tbl.classList.toggle('compact', !!prefs.compactMode);
+  ['viewModeFlat','viewModeGrouped'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('active', id === (prefs.viewMode === 'grouped' ? 'viewModeGrouped' : 'viewModeFlat'));
+  });
+  ['densityComfy','densityCompact'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('active', id === (prefs.compactMode ? 'densityCompact' : 'densityComfy'));
+  });
+
+  // Top 3 EV (computed across all prospects, not just filtered)
+  const topEVIds = new Set([...prospects].sort((a,b) => getEV(b) - getEV(a)).slice(0,3).map(p => p.id));
 
   document.getElementById('tableHead').innerHTML = `
     <tr>
@@ -1316,10 +1487,10 @@ function renderTable() {
       <th onclick="sortBy('proba')">Proba ↕</th>
       <th onclick="sortBy('ev')">EV ($m) ↕</th>
       ${hasActivity ? `<th onclick="sortBy('lastContact')" style="text-align:right">Last contact ↕</th><th onclick="sortBy('engagement')">Engagement ↕</th>` : ''}
-      <th style="width:30px"></th>
+      <th style="width:60px"></th>
     </tr>`;
 
-  document.getElementById('tableBody').innerHTML = filtered.map((p,i) => {
+  function renderRow(p, i) {
     const ev = getEV(p);
     const pct = maxEV>0?(ev/maxEV*100):0;
     const bc = ev>100?'var(--green)':ev>30?'var(--accent)':'var(--text-muted)';
@@ -1329,6 +1500,13 @@ function renderTable() {
     const probaTitle = override
       ? `Manual override (stage default: ${stageDefault}%) — click to edit, ↺ to reset`
       : `Stage default: ${stageDefault}% — click to set a manual override`;
+    const cfg = SC[p.statusKey];
+    const stageColor = cfg?.color || '#888';
+    const stageSelectStyle = `color:${stageColor};background-color:${stageColor}1f;border-color:${stageColor}55`;
+    const idx = orderedStages.findIndex(([k]) => k === p.statusKey);
+    const canUp = idx >= 0 && idx < orderedStages.length - 1;
+    const canDown = idx > 0;
+    const isTopEV = topEVIds.has(p.id);
 
     let activityCells = '';
     if (hasActivity) {
@@ -1346,10 +1524,10 @@ function renderTable() {
         <td><div class="ev-bar-container"><div class="ev-bar"><div class="ev-bar-fill" style="width:${a?eng:0}%;background:${engColor}"></div></div><span class="ev-val" style="color:${engColor}">${a?eng:'—'}</span></div></td>`;
     }
 
-    return `<tr style="animation-delay:${i*0.015}s">
+    return `<tr style="animation-delay:${i*0.012}s" class="${isTopEV?'top-ev':''}" ${isTopEV?'title="Top 3 deal by EV"':''}>
       <td class="prospect-name">${p.name}</td>
       <td><input class="edit-estimate mono" type="number" value="${p.estimate}" min="0" onchange="updateEstimate(${p.id},this.value)"></td>
-      <td><select class="status-select" onchange="updateStatus(${p.id},this.value)">${Object.entries(getStatusConfig()).map(([k,c])=>`<option value="${k}" ${k===p.statusKey?'selected':''}>${k.replace('a','*')} – ${c.label} (${(c.proba*100).toFixed(0)}%)</option>`).join('')}</select></td>
+      <td><select class="status-select" style="${stageSelectStyle}" onchange="updateStatus(${p.id},this.value)">${Object.entries(SC).map(([k,c])=>`<option value="${k}" ${k===p.statusKey?'selected':''}>${k.replace('a','*')} – ${c.label} (${(c.proba*100).toFixed(0)}%)</option>`).join('')}</select></td>
       <td><span class="geo-tag">${p.geo}</span></td>
       <td><div class="proba-cell" title="${probaTitle}">
         ${override ? '<span class="proba-cell-dot"></span>' : ''}
@@ -1359,12 +1537,109 @@ function renderTable() {
       </div></td>
       <td><div class="ev-bar-container"><div class="ev-bar"><div class="ev-bar-fill" style="width:${pct}%;background:${bc}"></div></div><span class="ev-val" style="color:${bc}">${ev.toFixed(1)}</span></div></td>
       ${activityCells}
-      <td><button class="delete-btn" onclick="deleteProspect(${p.id})" title="Remove">✕</button></td>
+      <td style="white-space:nowrap;text-align:right">
+        <span class="row-actions">
+          <button class="row-action-btn" ${canUp?'':'disabled'} onclick="upgradeProspect(${p.id})" title="Upgrade stage">↑</button>
+          <button class="row-action-btn" ${canDown?'':'disabled'} onclick="downgradeProspect(${p.id})" title="Downgrade stage">↓</button>
+        </span>
+        <button class="delete-btn" onclick="deleteProspect(${p.id})" title="Remove">✕</button>
+      </td>
     </tr>`;
-  }).join('') + `<tr class="totals-row"><td class="prospect-name" style="color:var(--accent)">TOTAL</td><td class="mono" style="font-weight:700;color:var(--accent)">$${tF.toLocaleString()}</td><td></td><td></td><td></td><td class="mono" style="font-weight:700;color:var(--green)">$${eF.toFixed(1)}</td>${hasActivity?'<td></td><td></td>':''}<td></td></tr>`;
+  }
+
+  const totalColspan = 6 + (hasActivity ? 2 : 0) + 1;
+  const totalRow = `<tr class="totals-row"><td class="prospect-name" style="color:var(--accent)">TOTAL</td><td class="mono" style="font-weight:700;color:var(--accent)">$${tF.toLocaleString()}</td><td></td><td></td><td></td><td class="mono" style="font-weight:700;color:var(--green)">$${eF.toFixed(1)}</td>${hasActivity?'<td></td><td></td>':''}<td></td></tr>`;
+
+  let bodyHtml = '';
+  if (prefs.viewMode === 'grouped') {
+    // Partition filtered by statusKey
+    const groups = {};
+    filtered.forEach(p => { (groups[p.statusKey] = groups[p.statusKey] || []).push(p); });
+    let idx = 0;
+    orderedStages.forEach(([k, c]) => {
+      const items = groups[k];
+      if (!items || !items.length) return;
+      const sumPipe = items.reduce((s,p)=>s+p.estimate,0);
+      const sumEV = items.reduce((s,p)=>s+getEV(p),0);
+      const collapsed = !!prefs.groupCollapsed[k];
+      bodyHtml += `<tr class="group-header" onclick="toggleGroup('${k}')">
+        <td colspan="${totalColspan}" style="border-left:3px solid ${c.color}">
+          <div class="group-header-row">
+            <span class="group-arrow">${collapsed?'▸':'▾'}</span>
+            <span class="group-label" style="color:${c.color}">${k.replace('a','*')} – ${c.label}</span>
+            <span class="group-count">${items.length} prospect${items.length>1?'s':''}</span>
+            <span class="group-pipe">$${sumPipe.toLocaleString()}m</span>
+            <span class="group-ev">EV $${sumEV.toFixed(0)}m</span>
+          </div>
+        </td>
+      </tr>`;
+      if (!collapsed) {
+        items.forEach(p => { bodyHtml += renderRow(p, idx++); });
+      }
+    });
+  } else {
+    filtered.forEach((p, i) => { bodyHtml += renderRow(p, i); });
+  }
+
+  document.getElementById('tableBody').innerHTML = bodyHtml + totalRow;
 }
 
 function renderSidebar() {
+  // Top movers — prospect upgrades in the last 7 days, dedup per prospect (keep most recent)
+  const cutoff7d = Date.now() - 7 * 86400000;
+  const seenMovers = new Set();
+  const movers = [];
+  for (const h of historyLog) {
+    if (h.type !== 'upgrade' || h.ts < cutoff7d) continue;
+    if (!h.prospect || seenMovers.has(h.prospect)) continue;
+    const p = prospects.find(pp => pp.name === h.prospect);
+    if (!p) continue;
+    seenMovers.add(h.prospect);
+    movers.push({ p, h });
+    if (movers.length >= 5) break;
+  }
+  const moversSection = document.getElementById('topMoversSection');
+  if (movers.length) {
+    moversSection.style.display = '';
+    document.getElementById('topMovers').innerHTML = movers.map(m => {
+      const cfg = getStatusConfig()[m.p.statusKey];
+      const days = Math.max(0, Math.round((Date.now() - m.h.ts) / 86400000));
+      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;border-bottom:1px solid rgba(26,39,68,0.3)">
+        <span style="width:6px;height:6px;border-radius:50%;background:${cfg?.color||'#888'};flex-shrink:0"></span>
+        <div style="flex:1;min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.p.name}</div><div style="font-size:10px;color:var(--text-muted)">→ ${cfg?.label||'?'} · ${days===0?'today':days+'d ago'}</div></div>
+      </div>`;
+    }).join('');
+  } else {
+    moversSection.style.display = 'none';
+  }
+
+  // To Re-engage — prospects with red flag (stage 3+ no contact >60d), top 5 by EV
+  if (activityRows.length) {
+    const agg = getActivityAgg();
+    const flagged = prospects
+      .map(p => ({ p, flag: detectActivityFlag(p, agg) }))
+      .filter(x => x.flag && x.flag.type === 'red')
+      .sort((a,b) => getEV(b.p) - getEV(a.p))
+      .slice(0, 5);
+    const reSection = document.getElementById('toReEngageSection');
+    if (flagged.length) {
+      reSection.style.display = '';
+      document.getElementById('toReEngage').innerHTML = flagged.map(({p}) => {
+        const cfg = getStatusConfig()[p.statusKey];
+        const a = agg[p.name.toUpperCase()];
+        const since = a && a.daysSinceLast != null ? Math.round(a.daysSinceLast) : null;
+        return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;border-bottom:1px solid rgba(26,39,68,0.3)">
+          <span style="color:var(--red);font-weight:700;flex-shrink:0">⚠</span>
+          <div style="flex:1;min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div><div style="font-size:10px;color:var(--text-muted)">${cfg?.label||'?'} · $${p.estimate}m · ${since!=null?since+'d silent':'no contact'}</div></div>
+        </div>`;
+      }).join('');
+    } else {
+      reSection.style.display = 'none';
+    }
+  } else {
+    document.getElementById('toReEngageSection').style.display = 'none';
+  }
+
   document.getElementById('probaMatrix').innerHTML = Object.entries(getStatusConfig()).map(([k,c])=>`
     <div class="proba-row">
       <span class="proba-label">${k.replace('a','*')} – ${c.label}</span>
