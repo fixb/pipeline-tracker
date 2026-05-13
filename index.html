@@ -751,17 +751,7 @@ body {
         </div>
         <div class="table-wrapper">
           <table class="pipeline-table">
-            <thead>
-              <tr>
-                <th onclick="sortBy('name')">Prospect ↕</th>
-                <th onclick="sortBy('estimate')">Pipeline ($m) ↕</th>
-                <th onclick="sortBy('statusKey')">Stage ↕</th>
-                <th onclick="sortBy('geo')">Region ↕</th>
-                <th onclick="sortBy('proba')">Proba ↕</th>
-                <th onclick="sortBy('ev')">EV ($m) ↕</th>
-                <th style="width:30px"></th>
-              </tr>
-            </thead>
+            <thead id="tableHead"></thead>
             <tbody id="tableBody"></tbody>
           </table>
         </div>
@@ -1205,10 +1195,25 @@ function renderKPIs() {
 // ═══════════════════════════════════════════
 // TABLE
 // ═══════════════════════════════════════════
+function detectActivityFlag(p, agg) {
+  const a = agg[p.name.toUpperCase()];
+  const sort = getSSort(p.statusKey);
+  if (sort >= 3 && (!a || (a.daysSinceLast != null && a.daysSinceLast > 60))) {
+    const ds = a && a.daysSinceLast != null ? `${Math.round(a.daysSinceLast)}d since last contact` : 'no activity recorded';
+    return { type: 'red', icon: '⚠', tooltip: `Advanced stage but ${ds} — consider re-engaging` };
+  }
+  if (sort <= 1 && a && a.count30d >= 5) {
+    return { type: 'green', icon: '↑', tooltip: `High activity (${a.count30d} in 30d) at early stage — consider upgrade` };
+  }
+  return null;
+}
+
 function renderTable() {
   const search = document.getElementById('searchInput').value.toLowerCase();
   const sf = document.getElementById('filterStage').value;
   const gf = document.getElementById('filterGeo').value;
+  const agg = getActivityAgg();
+  const hasActivity = activityRows.length > 0;
   let filtered = prospects.filter(p => {
     if (search && !p.name.toLowerCase().includes(search)) return false;
     if (sf !== 'all' && p.statusKey !== sf) return false;
@@ -1221,6 +1226,14 @@ function renderTable() {
     else if (sortField==='proba') { va=getProspectProba(a); vb=getProspectProba(b); }
     else if (sortField==='statusKey') { va=getSSort(a.statusKey); vb=getSSort(b.statusKey); }
     else if (sortField==='name') { va=a.name; vb=b.name; }
+    else if (sortField==='lastContact') {
+      va = agg[a.name.toUpperCase()]?.lastTs || 0;
+      vb = agg[b.name.toUpperCase()]?.lastTs || 0;
+    }
+    else if (sortField==='engagement') {
+      va = agg[a.name.toUpperCase()]?.engagement || 0;
+      vb = agg[b.name.toUpperCase()]?.engagement || 0;
+    }
     else { va=a[sortField]; vb=b[sortField]; }
     return typeof va==='string' ? sortDir*va.localeCompare(vb) : sortDir*(va-vb);
   });
@@ -1228,6 +1241,18 @@ function renderTable() {
   const tF = filtered.reduce((s,p)=>s+p.estimate,0);
   const eF = filtered.reduce((s,p)=>s+getEV(p),0);
   document.getElementById('prospectCount').textContent = `${filtered.length} of ${prospects.length}`;
+
+  document.getElementById('tableHead').innerHTML = `
+    <tr>
+      <th onclick="sortBy('name')">Prospect ↕</th>
+      <th onclick="sortBy('estimate')">Pipeline ($m) ↕</th>
+      <th onclick="sortBy('statusKey')">Stage ↕</th>
+      <th onclick="sortBy('geo')">Region ↕</th>
+      <th onclick="sortBy('proba')">Proba ↕</th>
+      <th onclick="sortBy('ev')">EV ($m) ↕</th>
+      ${hasActivity ? `<th onclick="sortBy('lastContact')" style="text-align:right">Last contact ↕</th><th onclick="sortBy('engagement')">Engagement ↕</th>` : ''}
+      <th style="width:30px"></th>
+    </tr>`;
 
   document.getElementById('tableBody').innerHTML = filtered.map((p,i) => {
     const ev = getEV(p);
@@ -1239,6 +1264,23 @@ function renderTable() {
     const probaTitle = override
       ? `Manual override (stage default: ${stageDefault}%) — click to edit, ↺ to reset`
       : `Stage default: ${stageDefault}% — click to set a manual override`;
+
+    let activityCells = '';
+    if (hasActivity) {
+      const a = agg[p.name.toUpperCase()];
+      const flag = detectActivityFlag(p, agg);
+      const flagHtml = flag
+        ? `<span style="color:var(--${flag.type==='red'?'red':'green'});font-weight:700;cursor:help" title="${flag.tooltip}">${flag.icon}</span>`
+        : '';
+      const lastStr = !a || a.daysSinceLast == null ? '—' : a.daysSinceLast < 1 ? 'today' : a.daysSinceLast < 60 ? `${Math.round(a.daysSinceLast)}d` : `${(a.daysSinceLast/30).toFixed(1)}mo`;
+      const lastColor = !a || a.daysSinceLast == null ? 'var(--text-muted)' : a.daysSinceLast <= 14 ? 'var(--green)' : a.daysSinceLast <= 30 ? 'var(--text-secondary)' : a.daysSinceLast <= 60 ? 'var(--amber)' : 'var(--red)';
+      const eng = a ? a.engagement : 0;
+      const engColor = !a ? 'var(--text-muted)' : eng >= 75 ? 'var(--green)' : eng >= 50 ? 'var(--cyan)' : eng >= 25 ? 'var(--amber)' : 'var(--red)';
+      activityCells = `
+        <td><div style="display:flex;align-items:center;gap:6px;justify-content:flex-end"><span class="mono" style="color:${lastColor}">${lastStr}</span>${flagHtml}</div></td>
+        <td><div class="ev-bar-container"><div class="ev-bar"><div class="ev-bar-fill" style="width:${a?eng:0}%;background:${engColor}"></div></div><span class="ev-val" style="color:${engColor}">${a?eng:'—'}</span></div></td>`;
+    }
+
     return `<tr style="animation-delay:${i*0.015}s">
       <td class="prospect-name">${p.name}</td>
       <td><input class="edit-estimate mono" type="number" value="${p.estimate}" min="0" onchange="updateEstimate(${p.id},this.value)"></td>
@@ -1251,9 +1293,10 @@ function renderTable() {
         ${override ? `<button class="proba-cell-reset" onclick="resetProspectProba(${p.id})" title="Reset to stage default">↺</button>` : ''}
       </div></td>
       <td><div class="ev-bar-container"><div class="ev-bar"><div class="ev-bar-fill" style="width:${pct}%;background:${bc}"></div></div><span class="ev-val" style="color:${bc}">${ev.toFixed(1)}</span></div></td>
+      ${activityCells}
       <td><button class="delete-btn" onclick="deleteProspect(${p.id})" title="Remove">✕</button></td>
     </tr>`;
-  }).join('') + `<tr class="totals-row"><td class="prospect-name" style="color:var(--accent)">TOTAL</td><td class="mono" style="font-weight:700;color:var(--accent)">$${tF.toLocaleString()}</td><td></td><td></td><td></td><td class="mono" style="font-weight:700;color:var(--green)">$${eF.toFixed(1)}</td><td></td></tr>`;
+  }).join('') + `<tr class="totals-row"><td class="prospect-name" style="color:var(--accent)">TOTAL</td><td class="mono" style="font-weight:700;color:var(--accent)">$${tF.toLocaleString()}</td><td></td><td></td><td></td><td class="mono" style="font-weight:700;color:var(--green)">$${eF.toFixed(1)}</td>${hasActivity?'<td></td><td></td>':''}<td></td></tr>`;
 }
 
 function renderSidebar() {
@@ -1629,6 +1672,98 @@ function renderLikelihood() {
             <span class="lk-count">${r.agg ? r.agg.count30d : '—'}</span>
           </div>`;
         }).join('')}
+      </div>
+    </div>
+
+    ${renderEffortVsSize(rows)}`;
+}
+
+function renderEffortVsSize(rows) {
+  // Quadrant classification: median estimate × median engagement among prospects with activity data
+  const withData = rows.filter(r => r.agg && r.p.estimate > 0);
+  if (!withData.length) return '';
+  const estimates = withData.map(r => r.p.estimate).sort((a,b) => a-b);
+  const engagements = withData.map(r => r.agg.engagement).sort((a,b) => a-b);
+  const medEst = estimates[Math.floor(estimates.length/2)];
+  const medEng = engagements[Math.floor(engagements.length/2)];
+
+  function quadrantOf(est, eng) {
+    if (est >= medEst && eng >= medEng) return { code: 'aligned',   label: 'Aligned',    color: 'var(--green)',  hint: 'big deal, high engagement — keep pushing' };
+    if (est <  medEst && eng >= medEng) return { code: 'overspend', label: 'Overspend',  color: 'var(--amber)',  hint: 'small deal, high engagement — efficient or over-invested?' };
+    if (est >= medEst && eng <  medEng) return { code: 'underinv',  label: 'Underinv.',  color: 'var(--red)',    hint: 'big deal, low engagement — increase activity' };
+    return                              { code: 'low',       label: 'Low/Low',    color: 'var(--text-muted)', hint: 'small deal, low engagement — deprioritized' };
+  }
+
+  // Sort by underinvestment severity by default: big deals with low engagement at the top
+  const enriched = withData.map(r => ({
+    ...r,
+    q: quadrantOf(r.p.estimate, r.agg.engagement),
+    activityPerM: r.p.estimate > 0 ? r.agg.count30d / r.p.estimate : 0,
+  }));
+  enriched.sort((a,b) => {
+    // Underinv first (worst signal), then by estimate desc
+    const order = { underinv: 0, aligned: 1, overspend: 2, low: 3 };
+    const da = order[a.q.code], db = order[b.q.code];
+    if (da !== db) return da - db;
+    return b.p.estimate - a.p.estimate;
+  });
+
+  // Counts per quadrant
+  const counts = { aligned:0, overspend:0, underinv:0, low:0 };
+  enriched.forEach(r => counts[r.q.code]++);
+
+  return `
+    <div class="panel" style="margin-top:18px">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Effort vs Pipeline Size</div>
+          <div class="panel-subtitle">classified by median estimate ($${medEst}m) and median engagement (${medEng}/100) — ${withData.length} prospects with activity</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 18px;border-bottom:1px solid var(--border)">
+        <div style="padding:10px;border-radius:8px;background:var(--red-bg);border:1px solid rgba(239,68,68,0.2)">
+          <div style="font-size:10px;color:var(--red);font-weight:600;text-transform:uppercase;letter-spacing:0.8px">Underinvested</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--red);margin-top:2px">${counts.underinv}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">big deal · low engagement</div>
+        </div>
+        <div style="padding:10px;border-radius:8px;background:var(--green-bg);border:1px solid rgba(16,185,129,0.2)">
+          <div style="font-size:10px;color:var(--green);font-weight:600;text-transform:uppercase;letter-spacing:0.8px">Aligned</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--green);margin-top:2px">${counts.aligned}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">big deal · high engagement</div>
+        </div>
+        <div style="padding:10px;border-radius:8px;background:var(--amber-bg);border:1px solid rgba(245,158,11,0.2)">
+          <div style="font-size:10px;color:var(--amber);font-weight:600;text-transform:uppercase;letter-spacing:0.8px">Overspend?</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--amber);margin-top:2px">${counts.overspend}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">small deal · high engagement</div>
+        </div>
+        <div style="padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.8px">Low/Low</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--text-secondary);margin-top:2px">${counts.low}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px">small deal · low engagement</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1.4fr 0.7fr 0.7fr 0.7fr 0.8fr 1fr;gap:10px;padding:9px 18px;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid var(--border);background:var(--bg-card)">
+        <span>Prospect</span>
+        <span style="text-align:right">$ size</span>
+        <span style="text-align:right">Eng.</span>
+        <span style="text-align:right">Act 30d</span>
+        <span>Quadrant</span>
+        <span style="font-size:10px;color:var(--text-muted);text-transform:none;letter-spacing:0">Hint</span>
+      </div>
+      <div style="max-height:420px;overflow-y:auto">
+        ${enriched.map(r => `
+          <div style="display:grid;grid-template-columns:1.4fr 0.7fr 0.7fr 0.7fr 0.8fr 1fr;gap:10px;padding:8px 18px;font-size:12px;align-items:center;border-bottom:1px solid rgba(26,39,68,0.3)">
+            <div>
+              <div style="font-weight:600">${r.p.name}</div>
+              <div style="font-size:10px;color:var(--text-muted)">${r.p.statusKey.replace('a','*')} – ${STATUS_LABELS[r.p.statusKey]?.label || '?'}</div>
+            </div>
+            <span class="mono" style="text-align:right">$${r.p.estimate}m</span>
+            <span class="mono" style="text-align:right;color:${r.agg.engagement>=75?'var(--green)':r.agg.engagement>=50?'var(--cyan)':r.agg.engagement>=25?'var(--amber)':'var(--red)'}">${r.agg.engagement}</span>
+            <span class="mono" style="text-align:right;color:var(--text-secondary)">${r.agg.count30d}</span>
+            <span style="display:inline-block;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.04);color:${r.q.color};font-size:10px;font-weight:600;width:fit-content">${r.q.label}</span>
+            <span style="font-size:10px;color:var(--text-muted)">${r.q.hint}</span>
+          </div>
+        `).join('')}
       </div>
     </div>`;
 }
