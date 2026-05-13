@@ -644,6 +644,40 @@ body {
 .empty-state .icon { font-size: 32px; margin-bottom: 12px; opacity: 0.3; }
 .empty-state p { font-size: 13px; }
 
+/* ─── LIKELIHOOD ─── */
+.likelihood-row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 0.6fr 0.6fr 1fr 0.7fr 0.6fr 0.5fr;
+  gap: 10px; align-items: center;
+  padding: 9px 14px; font-size: 12px;
+  border-bottom: 1px solid rgba(26,39,68,0.3);
+  transition: background 0.12s;
+}
+.likelihood-row:hover { background: var(--accent-dim); }
+.likelihood-header {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 0.6fr 0.6fr 1fr 0.7fr 0.6fr 0.5fr;
+  gap: 10px; padding: 9px 14px;
+  font-size: 10px; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.8px;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--bg-card); z-index: 2;
+}
+.lk-base { font-family: 'JetBrains Mono', monospace; color: var(--text-secondary); text-align: right; }
+.lk-adj { font-family: 'JetBrains Mono', monospace; font-weight: 600; text-align: right; }
+.lk-delta { font-family: 'JetBrains Mono', monospace; font-size: 11px; text-align: right; }
+.lk-eng-bar { height: 5px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; min-width: 50px; }
+.lk-eng-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+.lk-eng-row { display: flex; align-items: center; gap: 6px; }
+.lk-eng-val { font-family: 'JetBrains Mono', monospace; font-size: 10px; min-width: 24px; text-align: right; color: var(--text-secondary); }
+.lk-since { font-family: 'JetBrains Mono', monospace; font-size: 11px; text-align: right; }
+.lk-sent { text-align: center; font-size: 14px; }
+.lk-count { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary); text-align: right; }
+.lk-factors { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.lk-empty {
+  text-align: center; padding: 48px 20px; color: var(--text-muted);
+}
+
 /* ─── RESPONSIVE ─── */
 @media (max-width: 1100px) {
   .panels { grid-template-columns: 1fr; }
@@ -682,6 +716,7 @@ body {
   <div class="tab active" onclick="switchTab('pipeline')">Pipeline</div>
   <div class="tab" onclick="switchTab('funnel')">Funnel</div>
   <div class="tab" onclick="switchTab('velocity')">Velocity</div>
+  <div class="tab" onclick="switchTab('likelihood')">Close Likelihood</div>
   <div class="tab" onclick="switchTab('closings')">Closings</div>
   <div class="tab" onclick="switchTab('probas')">Proba Monitor</div>
   <div class="tab" onclick="switchTab('history')">History</div>
@@ -763,6 +798,11 @@ body {
   <!-- ═══ VELOCITY TAB ═══ -->
   <div class="tab-content" id="tab-velocity">
     <div id="velocityContent"></div>
+  </div>
+
+  <!-- ═══ CLOSE LIKELIHOOD TAB ═══ -->
+  <div class="tab-content" id="tab-likelihood">
+    <div id="likelihoodContent"></div>
   </div>
 
   <!-- ═══ CLOSINGS TAB ═══ -->
@@ -857,6 +897,7 @@ const STORAGE_KEY_NEXTID = 'bgf_pipeline_nextid';
 const STORAGE_KEY_PROBAS = 'bgf_pipeline_probas';
 const STORAGE_KEY_PROBA_HISTORY = 'bgf_pipeline_proba_history';
 const STORAGE_KEY_STAGES = 'bgf_pipeline_stages';
+const STORAGE_KEY_ACTIVITY = 'bgf_pipeline_activity';
 
 const ORIGINAL_PROBAS = {
   "1": 0.10, "2": 0.25, "3": 0.50, "4": 0.75, "5": 1.00
@@ -1005,17 +1046,28 @@ function resetAllData() {
     localStorage.removeItem(STORAGE_KEY_PROBAS);
     localStorage.removeItem(STORAGE_KEY_PROBA_HISTORY);
     localStorage.removeItem(STORAGE_KEY_STAGES);
+    localStorage.removeItem(STORAGE_KEY_ACTIVITY);
     prospects = JSON.parse(JSON.stringify(DEFAULT_PROSPECTS));
     historyLog = [];
     nextId = 1;
     currentProbas = { ...ORIGINAL_PROBAS };
     probaSnapshots = [];
     STATUS_LABELS = JSON.parse(JSON.stringify(ORIGINAL_STATUS_LABELS));
+    activityRows = [];
     funnelExpanded = {};
     renderAll();
     renderHistory();
   }
 }
+
+function loadActivity() {
+  try { const s = localStorage.getItem(STORAGE_KEY_ACTIVITY); if (s) return JSON.parse(s); } catch(e) {}
+  return [];
+}
+function saveActivity() {
+  try { localStorage.setItem(STORAGE_KEY_ACTIVITY, JSON.stringify(activityRows)); } catch(e) {}
+}
+let activityRows = loadActivity();
 
 let prospects = loadData() || JSON.parse(JSON.stringify(DEFAULT_PROSPECTS));
 
@@ -1124,6 +1176,7 @@ function switchTab(id) {
   event.target.classList.add('active');
   if (id === 'funnel') renderFunnel();
   if (id === 'velocity') renderVelocity();
+  if (id === 'likelihood') renderLikelihood();
   if (id === 'closings') renderClosings();
   if (id === 'probas') renderProbaMonitor();
   if (id === 'history') renderHistory();
@@ -1454,6 +1507,130 @@ function renderVelocity() {
     </div>`;
 
   document.getElementById('velocityContent').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+// CLOSE LIKELIHOOD
+// ═══════════════════════════════════════════
+function renderLikelihood() {
+  const agg = getActivityAgg();
+  const rows = prospects.map(p => {
+    const r = computeAdjustedProba(p);
+    return { p, ...r };
+  });
+
+  // Sort by adjusted EV descending
+  rows.sort((a,b) => (b.p.estimate * b.adjusted) - (a.p.estimate * a.adjusted));
+
+  const baseTotalEV = prospects.reduce((s,p) => s + p.estimate * getProspectProba(p), 0);
+  const adjTotalEV = rows.reduce((s,r) => s + r.p.estimate * r.adjusted, 0);
+  const evDelta = adjTotalEV - baseTotalEV;
+  const withActivity = rows.filter(r => r.agg).length;
+  const avgEngagement = withActivity
+    ? Math.round(rows.filter(r => r.agg).reduce((s,r) => s + r.agg.engagement, 0) / withActivity)
+    : 0;
+
+  if (!activityRows.length) {
+    document.getElementById('likelihoodContent').innerHTML = `
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Close Likelihood</div>
+            <div class="panel-subtitle">refined probability per prospect using activity signals</div>
+          </div>
+        </div>
+        <div class="lk-empty">
+          <div style="font-size:32px;opacity:0.3;margin-bottom:12px">📈</div>
+          <p style="font-size:13px;margin-bottom:14px">No activity data yet.</p>
+          <p style="font-size:12px;max-width:480px;margin:0 auto">
+            Export your activity Google Sheet to CSV (File → Download → .csv) and use the
+            <strong>↑ Import</strong> button. Expected columns: <code>company, when, what, reply, outcome</code>.
+            Once imported, this view will show an adjusted closing probability per prospect
+            combining recency, engagement, momentum and stuck-in-stage signals.
+          </p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('likelihoodContent').innerHTML = `
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">
+      <div class="kpi-card blue">
+        <div class="kpi-label">Base EV</div>
+        <div class="kpi-value" style="font-size:22px">$${Math.round(baseTotalEV).toLocaleString()}m</div>
+        <div class="kpi-sub">stage × proba</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">Adjusted EV</div>
+        <div class="kpi-value" style="font-size:22px">$${Math.round(adjTotalEV).toLocaleString()}m</div>
+        <div class="kpi-sub" style="color:${evDelta>=0?'var(--green)':'var(--red)'}">${evDelta>=0?'+':''}$${Math.round(evDelta)}m vs base</div>
+      </div>
+      <div class="kpi-card cyan">
+        <div class="kpi-label">Avg engagement</div>
+        <div class="kpi-value" style="font-size:22px">${avgEngagement}<span style="font-size:13px;color:var(--text-muted)">/100</span></div>
+        <div class="kpi-sub">${withActivity} of ${prospects.length} prospects</div>
+      </div>
+      <div class="kpi-card purple">
+        <div class="kpi-label">Activity entries</div>
+        <div class="kpi-value" style="font-size:22px">${activityRows.length}</div>
+        <div class="kpi-sub">${Object.keys(agg).length} companies tracked</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Adjusted Probability per Prospect</div>
+          <div class="panel-subtitle">base × recency × engagement × momentum × stuck — capped at 100%</div>
+        </div>
+      </div>
+      <div class="likelihood-header">
+        <span>Prospect</span>
+        <span style="text-align:right">Base → Adj</span>
+        <span style="text-align:right">Δ</span>
+        <span style="text-align:right">Adj EV</span>
+        <span>Engagement</span>
+        <span style="text-align:right">Last contact</span>
+        <span style="text-align:center">Sent.</span>
+        <span style="text-align:right">30d</span>
+      </div>
+      <div style="max-height:calc(100vh - 360px);overflow-y:auto">
+        ${rows.map(r => {
+          const p = r.p;
+          const noData = !r.agg;
+          const baseStr = `${(r.base*100).toFixed(0)}%`;
+          const adjStr = `${(r.adjusted*100).toFixed(0)}%`;
+          const delta = r.adjusted - r.base;
+          const deltaStr = noData ? '—' : `${delta>=0?'+':''}${(delta*100).toFixed(0)} pts`;
+          const deltaColor = delta > 0.001 ? 'var(--green)' : delta < -0.001 ? 'var(--red)' : 'var(--text-muted)';
+          const adjEV = p.estimate * r.adjusted;
+          const eng = r.agg ? r.agg.engagement : 0;
+          const engColor = eng >= 75 ? 'var(--green)' : eng >= 50 ? 'var(--cyan)' : eng >= 25 ? 'var(--amber)' : 'var(--red)';
+          const daysSince = r.agg && r.agg.daysSinceLast != null ? r.agg.daysSinceLast : null;
+          const sinceStr = daysSince == null ? '—' : daysSince < 1 ? 'today' : daysSince < 60 ? `${Math.round(daysSince)}d` : `${(daysSince/30).toFixed(1)}mo`;
+          const sinceColor = daysSince == null ? 'var(--text-muted)' : daysSince <= 14 ? 'var(--green)' : daysSince <= 30 ? 'var(--text-secondary)' : daysSince <= 60 ? 'var(--amber)' : 'var(--red)';
+          const sentIcon = !r.agg ? '·' : r.agg.avgSentiment > 0.2 ? '▲' : r.agg.avgSentiment < -0.2 ? '▼' : '◆';
+          const sentColor = !r.agg ? 'var(--text-muted)' : r.agg.avgSentiment > 0.2 ? 'var(--green)' : r.agg.avgSentiment < -0.2 ? 'var(--red)' : 'var(--text-muted)';
+          const factorTitle = r.factors.length ? r.factors.map(f => `${f[0]}: ${f[1]} → ×${f[2]}`).join(' | ') : 'No adjustment (no activity data)';
+          return `<div class="likelihood-row" title="${factorTitle.replace(/"/g,'&quot;')}">
+            <div>
+              <div style="font-weight:600">${p.name}</div>
+              <div style="font-size:10px;color:var(--text-muted)">${p.statusKey.replace('a','*')} – ${STATUS_LABELS[p.statusKey]?.label||'?'} · $${p.estimate}m</div>
+            </div>
+            <span class="lk-base">${baseStr} → <span style="color:var(--text-primary)">${adjStr}</span></span>
+            <span class="lk-delta" style="color:${deltaColor}">${deltaStr}</span>
+            <span class="lk-adj" style="color:var(--green)">$${adjEV.toFixed(1)}m</span>
+            <div class="lk-eng-row">
+              <div class="lk-eng-bar"><div class="lk-eng-fill" style="width:${eng}%;background:${engColor}"></div></div>
+              <span class="lk-eng-val">${noData?'—':eng}</span>
+            </div>
+            <span class="lk-since" style="color:${sinceColor}">${sinceStr}</span>
+            <span class="lk-sent" style="color:${sentColor}">${sentIcon}</span>
+            <span class="lk-count">${r.agg ? r.agg.count30d : '—'}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
 }
 
 // ═══════════════════════════════════════════
@@ -1851,7 +2028,9 @@ function handleImportFile(event) {
       } else {
         const firstLine = (text.split('\n')[0] || '').toLowerCase();
         const isHistory = firstLine.includes('timestamp') && firstLine.includes('prospect') && firstLine.includes('detail');
-        if (isHistory) importHistoryFromCSV(text, file.name);
+        const isActivity = firstLine.includes('company') && firstLine.includes('when') && (firstLine.includes('what') || firstLine.includes('outcome'));
+        if (isActivity) importActivityFromCSV(text, file.name);
+        else if (isHistory) importHistoryFromCSV(text, file.name);
         else importPipelineFromCSV(text, file.name);
       }
     } catch (err) {
@@ -1860,6 +2039,209 @@ function handleImportFile(event) {
   };
   reader.readAsText(file);
   event.target.value = '';
+}
+
+// ═══════════════════════════════════════════
+// ACTIVITY — CSV import, classifiers, aggregation
+// ═══════════════════════════════════════════
+function classifyWhat(s) {
+  const v = (s || '').toLowerCase();
+  if (/meet|lunch|dinner|coffee/.test(v)) return 'meeting';
+  if (/call|phone/.test(v)) return 'call';
+  if (/email|mail|message/.test(v)) return 'email';
+  if (/intro/.test(v)) return 'intro';
+  if (/follow/.test(v)) return 'follow-up';
+  return 'other';
+}
+function parseReply(s) {
+  const v = (s || '').toLowerCase().trim();
+  if (!v) return false;
+  if (/^(no|n|false|0|pending|none)$/.test(v)) return false;
+  if (/^(yes|y|true|1|replied|responded|ok)$/.test(v)) return true;
+  return true;
+}
+function parseSentiment(s) {
+  const v = (s || '').toLowerCase();
+  if (!v) return 0;
+  if (/(positive|good|great|next|interested|win|qualified|engaged|enthusiastic|promising|pursue|invest|warm|hot|advanc)/.test(v)) return 1;
+  if (/(negative|bad|dead|lost|pass(ed)?|decline(d)?|reject|not\s+interested|no\s+fit|cold|drop|kill)/.test(v)) return -1;
+  return 0;
+}
+function parseISODate(s) {
+  if (!s) return 0;
+  const m = String(s).match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T ](\d{1,2}):(\d{2}))?/);
+  if (!m) return 0;
+  const d = new Date(parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]), parseInt(m[4]||0), parseInt(m[5]||0));
+  return d.getTime();
+}
+
+function parseActivityCSV(text) {
+  function parseLine(line) {
+    const out = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (inQ) {
+        if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
+        else if (c === '"') { inQ = false; }
+        else { cur += c; }
+      } else {
+        if (c === '"') inQ = true;
+        else if (c === ',') { out.push(cur); cur = ''; }
+        else { cur += c; }
+      }
+    }
+    out.push(cur);
+    return out.map(s => s.trim());
+  }
+  const lines = text.replace(/\r\n?/g, '\n').split('\n').filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const header = parseLine(lines[0]).map(h => h.toLowerCase().trim());
+  const idx = {
+    name: header.indexOf('name'),
+    company: header.indexOf('company'),
+    what: header.indexOf('what'),
+    when: header.indexOf('when'),
+    reply: header.indexOf('reply'),
+    tags: header.indexOf('tags'),
+    outcome: header.indexOf('outcome'),
+  };
+  if (idx.company < 0) throw new Error('No "company" column found in activity CSV');
+  if (idx.when < 0) throw new Error('No "when" column found in activity CSV');
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = parseLine(lines[i]);
+    const company = (cells[idx.company] || '').trim();
+    if (!company) continue;
+    const whenStr = (cells[idx.when] || '').trim();
+    const ts = parseISODate(whenStr);
+    if (!ts) continue;
+    rows.push({
+      company: company.toUpperCase(),
+      name: idx.name >= 0 ? (cells[idx.name] || '').trim() : '',
+      what: idx.what >= 0 ? (cells[idx.what] || '').trim() : '',
+      when: whenStr,
+      reply: idx.reply >= 0 ? (cells[idx.reply] || '').trim() : '',
+      tags: idx.tags >= 0 ? (cells[idx.tags] || '').trim() : '',
+      outcome: idx.outcome >= 0 ? (cells[idx.outcome] || '').trim() : '',
+      ts,
+      whatType: classifyWhat(idx.what >= 0 ? cells[idx.what] : ''),
+      replied: parseReply(idx.reply >= 0 ? cells[idx.reply] : ''),
+      sentiment: parseSentiment(idx.outcome >= 0 ? cells[idx.outcome] : ''),
+    });
+  }
+  return rows;
+}
+
+function importActivityFromCSV(text, fileName) {
+  const rows = parseActivityCSV(text);
+  if (!rows.length) { alert('No activity rows with valid dates found in CSV.'); return; }
+  const companies = new Set(rows.map(r => r.company));
+  const pipelineNames = new Set(prospects.map(p => p.name.toUpperCase()));
+  const matched = [...companies].filter(c => pipelineNames.has(c)).length;
+  const unmatched = companies.size - matched;
+  const msg = `Import ${rows.length} activity entries from ${fileName}?\n\n${companies.size} companies referenced (${matched} match current pipeline, ${unmatched} unmatched — they'll be stored but won't affect any prospect).\n\n⚠️ This will OVERWRITE current activity data (${activityRows.length} entries).`;
+  if (!confirm(msg)) return;
+  activityRows = rows;
+  saveActivity();
+  logEvent('edit', 'SYSTEM', `<span class="history-badge badge-new">Activity imported</span> from <em>${fileName}</em> — ${rows.length} entries, ${matched}/${companies.size} companies matched`);
+  renderAll();
+  renderHistory();
+}
+
+let _activityAggCache = null;
+let _activityAggCacheKey = '';
+function getActivityAgg() {
+  const key = `${activityRows.length}:${activityRows.length?activityRows[0].ts:0}`;
+  if (_activityAggCache && _activityAggCacheKey === key) return _activityAggCache;
+  const now = Date.now();
+  const D30 = 30*86400000, D60 = 60*86400000, D90 = 90*86400000;
+  const byCompany = {};
+  for (const r of activityRows) {
+    const k = r.company;
+    if (!byCompany[k]) byCompany[k] = {
+      company:k, rows:[], lastTs:0, count:0, count30d:0, count60d:0, count90d:0,
+      meetings:0, calls:0, emails:0, intros:0, followups:0, other:0,
+      replied:0, sentimentSum:0, sentimentN:0,
+    };
+    const c = byCompany[k];
+    c.rows.push(r);
+    c.count++;
+    if (r.ts > c.lastTs) c.lastTs = r.ts;
+    const age = now - r.ts;
+    if (age <= D30) c.count30d++;
+    if (age <= D60) c.count60d++;
+    if (age <= D90) c.count90d++;
+    if (r.whatType === 'meeting') c.meetings++;
+    else if (r.whatType === 'call') c.calls++;
+    else if (r.whatType === 'email') c.emails++;
+    else if (r.whatType === 'intro') c.intros++;
+    else if (r.whatType === 'follow-up') c.followups++;
+    else c.other++;
+    if (r.replied) c.replied++;
+    if (r.sentiment !== 0) { c.sentimentSum += r.sentiment; c.sentimentN++; }
+  }
+  for (const c of Object.values(byCompany)) {
+    c.daysSinceLast = c.lastTs ? (now - c.lastTs) / 86400000 : null;
+    c.replyRate = c.count ? c.replied / c.count : 0;
+    c.avgSentiment = c.sentimentN ? c.sentimentSum / c.sentimentN : 0;
+    const activityScore = Math.min(1, c.count30d / 5);
+    const sentNorm = (c.avgSentiment + 1) / 2;
+    c.engagement = Math.round(100 * (0.4*activityScore + 0.3*c.replyRate + 0.3*sentNorm));
+  }
+  _activityAggCache = byCompany;
+  _activityAggCacheKey = key;
+  return byCompany;
+}
+
+function computeAdjustedProba(p) {
+  const base = getProspectProba(p);
+  const agg = getActivityAgg()[p.name.toUpperCase()];
+  const factors = [];
+
+  let recencyMult = 1.0;
+  if (agg && agg.daysSinceLast != null) {
+    const d = agg.daysSinceLast;
+    if (d <= 14)      { recencyMult = 1.20; factors.push(['recency', '<14d', 1.20]); }
+    else if (d <= 30) { recencyMult = 1.00; factors.push(['recency', '14–30d', 1.00]); }
+    else if (d <= 60) { recencyMult = 0.85; factors.push(['recency', '30–60d', 0.85]); }
+    else if (d <= 90) { recencyMult = 0.70; factors.push(['recency', '60–90d', 0.70]); }
+    else              { recencyMult = 0.50; factors.push(['recency', '>90d', 0.50]); }
+  }
+
+  let engagementMult = 1.0;
+  if (agg) {
+    const e = agg.engagement;
+    if (e >= 75)      { engagementMult = 1.30; factors.push(['engagement', `${e}/100`, 1.30]); }
+    else if (e >= 50) { engagementMult = 1.10; factors.push(['engagement', `${e}/100`, 1.10]); }
+    else if (e >= 25) { engagementMult = 0.90; factors.push(['engagement', `${e}/100`, 0.90]); }
+    else              { engagementMult = 0.70; factors.push(['engagement', `${e}/100`, 0.70]); }
+  }
+
+  let stuckPenalty = 1.0;
+  const vel = buildVelocityStats();
+  const completedDur = vel.completed[p.statusKey] || [];
+  const curArr = vel.current[p.statusKey] || [];
+  const myCur = curArr.find(c => c.name === p.name);
+  if (myCur && completedDur.length) {
+    const avgComp = completedDur.reduce((a,b)=>a+b,0) / completedDur.length;
+    if (myCur.durationMs > avgComp * 1.5) {
+      stuckPenalty = 0.85;
+      factors.push(['stuck', `>1.5× avg`, 0.85]);
+    }
+  }
+
+  let momentumBonus = 1.0;
+  const cutoff = Date.now() - 30 * 86400000;
+  const recentUpgrade = historyLog.find(h => h.prospect === p.name && h.type === 'upgrade' && h.ts > cutoff);
+  if (recentUpgrade) {
+    momentumBonus = 1.15;
+    factors.push(['momentum', 'upgraded <30d', 1.15]);
+  }
+
+  const adjusted = Math.max(0, Math.min(1, base * recencyMult * engagementMult * stuckPenalty * momentumBonus));
+  return { base, adjusted, factors, agg };
 }
 
 function importBackupFromJSON(text, fileName) {
@@ -1886,6 +2268,7 @@ function importBackupFromJSON(text, fileName) {
     STATUS_LABELS = data.stages;
     saveStages();
   }
+  if (Array.isArray(data.activity)) { activityRows = data.activity; saveActivity(); }
   if (typeof data.nextId === 'number') nextId = data.nextId;
   else nextId = (prospects.reduce((m,p) => Math.max(m, p.id || 0), 0)) + 1;
 
@@ -2063,6 +2446,7 @@ function exportBackup() {
     currentProbas,
     probaSnapshots,
     stages: STATUS_LABELS,
+    activity: activityRows,
     nextId,
   };
   const a = document.createElement('a');
