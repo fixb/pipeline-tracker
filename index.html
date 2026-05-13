@@ -1525,6 +1525,19 @@ function renderClosings() {
       </div>
     </div>
 
+    <div class="motivation-banner">
+      <div class="motivation-icon">🎯</div>
+      <div class="motivation-text">
+        <h3>Tu es plus proche que tu ne le penses</h3>
+        <p>
+          <span class="highlight">${stage3plus.length}</span> prospects sont déjà en Stage 3+ pour un EV de <span class="highlight">$${Math.round(stage3plusEV)}m</span>.
+          Tes 5 meilleurs deals seuls valent <span class="highlight">$${Math.round(top5ev)}m</span> en expected value.
+          ${needleSentence}
+          Focus on moving the needle on your top 5.
+        </p>
+      </div>
+    </div>
+
     <div class="closing-deals-section">
       <div class="closing-section-title"><div class="dot" style="background:var(--green)"></div>Top 12 Deals by Expected Value — Your Closing Targets</div>
       ${topDeals.map(p => {
@@ -1550,19 +1563,6 @@ function renderClosings() {
           </div>
         </div>`;
       }).join('')}
-    </div>
-
-    <div class="motivation-banner">
-      <div class="motivation-icon">🎯</div>
-      <div class="motivation-text">
-        <h3>Tu es plus proche que tu ne le penses</h3>
-        <p>
-          <span class="highlight">${stage3plus.length}</span> prospects sont déjà en Stage 3+ pour un EV de <span class="highlight">$${Math.round(stage3plusEV)}m</span>.
-          Tes 5 meilleurs deals seuls valent <span class="highlight">$${Math.round(top5ev)}m</span> en expected value.
-          ${needleSentence}
-          Focus on moving the needle on your top 5.
-        </p>
-      </div>
     </div>`;
 
   document.getElementById('closingsContent').innerHTML = html;
